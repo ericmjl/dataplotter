@@ -92,6 +92,15 @@ export function validateTableData(
   if (format === 'column' && 'columnLabels' in data) {
     if (data.columnLabels.length === 0) errors.push('At least one column required');
     const nCols = data.columnLabels.length;
+    if (data.groupLabels?.length && data.groupForColumn) {
+      if (data.groupForColumn.length !== nCols) {
+        errors.push('groupForColumn length must match column count');
+      }
+      const nGroups = data.groupLabels.length;
+      if (data.groupForColumn.some((g) => g < 0 || g >= nGroups)) {
+        errors.push('groupForColumn must be valid group indices');
+      }
+    }
     for (let i = 0; i < data.rows.length; i++) {
       if (data.rows[i].length !== nCols) {
         errors.push(`Row ${i + 1} has ${data.rows[i].length} values, expected ${nCols}`);

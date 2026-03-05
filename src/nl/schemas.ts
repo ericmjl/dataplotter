@@ -14,6 +14,18 @@ export const createGraphArgsSchema = z.object({
   name: z.string().optional(),
 });
 
+const chartAnnotationSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  text: z.string(),
+  xref: z.enum(['paper', 'x']).optional(),
+  yref: z.enum(['paper', 'y']).optional(),
+  showarrow: z.boolean().optional(),
+  font: z.object({ size: z.number().optional(), color: z.string().optional() }).optional(),
+  bgcolor: z.string().optional(),
+  borderpad: z.number().optional(),
+});
+
 export const updateGraphOptionsArgsSchema = z.object({
   graphId: z.string(),
   options: z.object({
@@ -24,6 +36,7 @@ export const updateGraphOptionsArgsSchema = z.object({
     yAxisScale: z.enum(['linear', 'log']).optional(),
     errorBarType: z.enum(['sem', 'sd', 'ci', 'none']).optional(),
     showLegend: z.boolean().optional(),
+    annotations: z.array(chartAnnotationSchema).optional(),
   }),
 });
 

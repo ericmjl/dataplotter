@@ -8,9 +8,23 @@ export function Sidebar() {
   const project = useStore((s) => s.project);
   const setSelection = useStore((s) => s.setSelection);
   const addTable = useStore((s) => s.addTable);
+  const removeTable = useStore((s) => s.removeTable);
+  const removeAnalysis = useStore((s) => s.removeAnalysis);
   const removeGraph = useStore((s) => s.removeGraph);
   const selection = project.selection;
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [collapsedTables, setCollapsedTables] = useState<Set<string>>(new Set());
+
+  const { tables, analyses, graphs } = project;
+
+  function toggleTable(tableId: string) {
+    setCollapsedTables((prev) => {
+      const next = new Set(prev);
+      if (next.has(tableId)) next.delete(tableId);
+      else next.add(tableId);
+      return next;
+    });
+  }
 
   function handleNewFromSampleColumn() {
     addTable({
@@ -50,73 +64,136 @@ export function Sidebar() {
 
       <div className="sidebar-content">
         <span className="sidebar-section" aria-hidden="true">Tables</span>
-        {project.tables.length === 0 ? (
+        {tables.length === 0 ? (
           <p className="sidebar-empty">No tables yet</p>
         ) : (
-          project.tables.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`sidebar-item ${selection?.type === 'table' && selection.tableId === t.id ? 'selected' : ''}`}
-              onClick={() => setSelection({ type: 'table', tableId: t.id })}
-              aria-label={`Select table ${t.name}`}
-              aria-pressed={selection?.type === 'table' && selection.tableId === t.id}
-            >
-              <span className="sidebar-item-icon table">T</span>
-              {t.name}
-            </button>
-          ))
-        )}
+          tables.map((t) => {
+            const tableAnalyses = analyses.filter((a) => a.tableId === t.id);
+            const tableGraphs = graphs.filter((g) => g.tableId === t.id);
+            const isCollapsed = collapsedTables.has(t.id);
+            const hasChildren = tableAnalyses.length > 0 || tableGraphs.length > 0;
 
-        <span className="sidebar-section" aria-hidden="true">Analyses</span>
-        {project.analyses.length === 0 ? (
-          <p className="sidebar-empty">None</p>
-        ) : (
-          project.analyses.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              className={`sidebar-item ${selection?.type === 'analysis' && selection.analysisId === a.id ? 'selected' : ''}`}
-              onClick={() => setSelection({ type: 'analysis', analysisId: a.id })}
-              aria-label={`Select analysis ${a.type}`}
-              aria-pressed={selection?.type === 'analysis' && selection.analysisId === a.id}
-            >
-              <span className="sidebar-item-icon analysis">A</span>
-              {a.type.replace(/_/g, ' ')}
-            </button>
-          ))
-        )}
-
-        <span className="sidebar-section" aria-hidden="true">Graphs</span>
-        {project.graphs.length === 0 ? (
-          <p className="sidebar-empty">None</p>
-        ) : (
-          project.graphs.map((g) => (
-            <div key={g.id} className="sidebar-item-row">
-              <button
-                type="button"
-                className={`sidebar-item ${selection?.type === 'graph' && selection.graphId === g.id ? 'selected' : ''}`}
-                onClick={() => setSelection({ type: 'graph', graphId: g.id })}
-                aria-label={`Select graph ${g.name}`}
-                aria-pressed={selection?.type === 'graph' && selection.graphId === g.id}
-              >
-                <span className="sidebar-item-icon graph">G</span>
-                {g.name}
-              </button>
-              <button
-                type="button"
-                className="sidebar-item-delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeGraph(g.id);
-                }}
-                aria-label={`Delete graph ${g.name}`}
-                title="Delete graph"
-              >
-                ×
-              </button>
-            </div>
-          ))
+            return (
+              <div key={t.id} className="sidebar-table-block">
+                <div className="sidebar-item-row">
+                  {hasChildren ? (
+                    <button
+                      type="button"
+                      className={`sidebar-item-expand ${isCollapsed ? 'collapsed' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleTable(t.id);
+                      }}
+                      aria-label={isCollapsed ? 'Expand' : 'Collapse'}
+                      aria-expanded={!isCollapsed}
+                    >
+                      ▼
+                    </button>
+                  ) : (
+                    <span style={{ width: 18, flexShrink: 0 }} aria-hidden="true" />
+                  )}
+                  <button
+                    type="button"
+                    className={`sidebar-item ${selection?.type === 'table' && selection.tableId === t.id ? 'selected' : ''}`}
+                    onClick={() => setSelection({ type: 'table', tableId: t.id })}
+                    aria-label={`Select table ${t.name}`}
+                    aria-pressed={selection?.type === 'table' && selection.tableId === t.id}
+                  >
+                    <span className="sidebar-item-icon table">T</span>
+                    {t.name}
+                  </button>
+                  <button
+                    type="button"
+                    className="sidebar-item-delete"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeTable(t.id);
+                    }}
+                    aria-label={`Delete table ${t.name}`}
+                    title="Delete table"
+                  >
+                    ×
+                  </button>
+                </div>
+                {hasChildren && !isCollapsed && (
+                  <div className="sidebar-nested">
+                    {tableAnalyses.length > 0 && (
+                      <>
+                        <div className="sidebar-subsection">Analyses</div>
+                        {tableAnalyses.map((a) => (
+                          <div key={a.id} className="sidebar-item-row nested">
+                            <button
+                              type="button"
+                              className={`sidebar-item ${selection?.type === 'analysis' && selection.analysisId === a.id ? 'selected' : ''}`}
+                              onClick={() => setSelection({ type: 'analysis', analysisId: a.id })}
+                              aria-label={`Select analysis ${a.type}`}
+                              aria-pressed={selection?.type === 'analysis' && selection.analysisId === a.id}
+                            >
+                              <span className="sidebar-item-icon analysis">A</span>
+                              {a.type.replace(/_/g, ' ')}
+                            </button>
+                            <button
+                              type="button"
+                              className="sidebar-item-delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeAnalysis(a.id);
+                              }}
+                              aria-label={`Delete analysis ${a.type}`}
+                              title="Delete analysis"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {tableGraphs.length > 0 && (
+                      <>
+                        <div className="sidebar-subsection">Graphs</div>
+                        {tableGraphs.map((g) => {
+                          const linkedAnalysis = g.analysisId
+                            ? analyses.find((a) => a.id === g.analysisId)
+                            : null;
+                          return (
+                            <div key={g.id} className="sidebar-item-row nested">
+                              <button
+                                type="button"
+                                className={`sidebar-item ${selection?.type === 'graph' && selection.graphId === g.id ? 'selected' : ''}`}
+                                onClick={() => setSelection({ type: 'graph', graphId: g.id })}
+                                aria-label={`Select graph ${g.name}`}
+                                aria-pressed={selection?.type === 'graph' && selection.graphId === g.id}
+                              >
+                                <span className="sidebar-item-icon graph">G</span>
+                                {g.name}
+                                {linkedAnalysis && (
+                                  <span className="sidebar-item-sublabel" title="Linked analysis">
+                                    ({linkedAnalysis.type.replace(/_/g, ' ')})
+                                  </span>
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                className="sidebar-item-delete"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeGraph(g.id);
+                                }}
+                                aria-label={`Delete graph ${g.name}`}
+                                title="Delete graph"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 

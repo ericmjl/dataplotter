@@ -36,11 +36,29 @@ export function DataGrid({
 
   if (format === 'column' && 'columnLabels' in localData) {
     const d = localData as ColumnTableData;
-    const { columnLabels, rows } = d;
+    const { columnLabels, rows, groupLabels, groupForColumn } = d;
+    const hasGroups = groupLabels?.length && groupForColumn?.length === columnLabels.length;
     return (
       <div className="data-grid-wrap">
         <table className="data-grid" aria-label={ariaLabel}>
           <thead>
+            {hasGroups && groupLabels && (
+              <tr>
+                <th scope="col" style={{ width: '2rem' }} aria-hidden="true" />
+                {groupLabels.map((name, g) => (
+                  <th
+                    key={g}
+                    scope="colgroup"
+                    colSpan={
+                      groupForColumn?.filter((c) => c === g).length ?? 1
+                    }
+                    className="data-grid-group-header"
+                  >
+                    {name}
+                  </th>
+                ))}
+              </tr>
+            )}
             <tr>
               <th scope="col" style={{ width: '2rem' }} aria-hidden="true">
                 #

@@ -32,6 +32,9 @@ export type GraphTypeId =
 export interface ColumnTableData {
   columnLabels: string[];
   rows: (number | null)[][];
+  /** When set, columns are replicates within groups; groupForColumn[i] = index into groupLabels */
+  groupLabels?: string[];
+  groupForColumn?: number[];
 }
 
 export interface XYTableData {

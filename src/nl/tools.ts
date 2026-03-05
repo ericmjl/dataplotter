@@ -38,7 +38,8 @@ export const NL_TOOLS = [
   },
   {
     name: 'update_graph_options',
-    description: 'Update options (title, axis labels, etc.) of a graph.',
+    description:
+      'Update options (title, axis labels, annotations, etc.) of a graph. Annotations are text labels on the chart and are included in PNG/SVG export. Use options.annotations: array of { x, y, text, xref?, yref?, showarrow? }. xref/yref: "paper" (0–1) or "x"/"y" (data coords).',
     parameters: {
       type: 'object',
       properties: {
@@ -49,6 +50,21 @@ export const NL_TOOLS = [
             title: { type: 'string' },
             xAxisLabel: { type: 'string' },
             yAxisLabel: { type: 'string' },
+            annotations: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  x: { type: 'number', description: 'x position' },
+                  y: { type: 'number', description: 'y position' },
+                  text: { type: 'string', description: 'Annotation text' },
+                  xref: { type: 'string', enum: ['paper', 'x'] },
+                  yref: { type: 'string', enum: ['paper', 'y'] },
+                  showarrow: { type: 'boolean' },
+                },
+                required: ['x', 'y', 'text'],
+              },
+            },
           },
         },
       },

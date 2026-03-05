@@ -44,7 +44,14 @@ export async function handleUserMessage(
     return { success: false, outcomes: [], error: 'Chat requires an LLM. Set VITE_GROQ_API_KEY, VITE_ANTHROPIC_API_KEY, or VITE_OPENAI_COMPATIBLE_* in .env.local.' };
   }
   const context = buildContext(getState());
-  const systemMessage = `You are a helpful assistant for a data analysis app (like GraphPad Prism). You have access to tools. Use the context below to answer. Only use the tools when the user asks to run an analysis, create a graph, create a table, or list options. Reply briefly.\n\nContext:\n${context}`;
+  const systemMessage = `You are a helpful assistant for a data analysis app (like GraphPad Prism). You have access to tools. Use the context below to answer.
+
+Context lists graphs as "Graph \"name\" (id: <id>)" and may show a linked analysis result (e.g. p = 0.02). When the user asks to add an annotation (e.g. for statistical significance):
+- Resolve the graph by name to its id from Context; if the user said "bar 1" or "the graph", use the selected graph's id.
+- Call update_graph_options with that graphId and options.annotations: an array of { x, y, text, xref, yref }. Use paper coords: xref: "paper", yref: "paper", x: 0.5, y: 0.92 (top center).
+- For significance annotations, set text from the graph's linked analysis: e.g. "p = 0.03" or "p < 0.05" or "ns" (if p >= 0.05). If there is no linked analysis or no p-value, use "N/A" or ask the user.
+
+Reply briefly. Only use tools when the user asks to run an analysis, create a graph, create a table, add an annotation, or list options.\n\nContext:\n${context}`;
 
   let messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
     { role: 'system', content: systemMessage },
@@ -175,8 +182,18 @@ export async function handleUserMessage(
           outcomes.push(`update_graph_options: ${parsed.error.message}`);
           continue;
         }
+        const graph = project.graphs.find((g) => g.id === parsed.data.graphId);
+        if (!graph) {
+          outcomes.push(`Graph ${parsed.data.graphId} not found.`);
+          continue;
+        }
         actions.updateGraphOptions(parsed.data.graphId, parsed.data.options);
-        outcomes.push('Updated graph options.');
+        const anns = parsed.data.options.annotations;
+        if (anns?.length) {
+          outcomes.push(`Added ${anns.length} annotation(s) to "${graph.name}".`);
+        } else {
+          outcomes.push('Updated graph options.');
+        }
       } else if (call.name === 'create_table') {
         const parsed = createTableArgsSchema.safeParse(args);
         if (!parsed.success) {

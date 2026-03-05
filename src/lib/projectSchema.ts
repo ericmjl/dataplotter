@@ -5,6 +5,8 @@ import { CURRENT_PROJECT_VERSION } from '../types';
 const ColumnTableDataSchema = z.object({
   columnLabels: z.array(z.string()),
   rows: z.array(z.array(z.union([z.number(), z.null()]))),
+  groupLabels: z.array(z.string()).optional(),
+  groupForColumn: z.array(z.number()).optional(),
 });
 
 const XYTableDataSchema = z.object({
@@ -94,6 +96,18 @@ const AnalysisSchema = z.object({
   error: z.string().optional(),
 });
 
+const ChartAnnotationSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  text: z.string(),
+  xref: z.enum(['paper', 'x']).optional(),
+  yref: z.enum(['paper', 'y']).optional(),
+  showarrow: z.boolean().optional(),
+  font: z.object({ size: z.number().optional(), color: z.string().optional() }).optional(),
+  bgcolor: z.string().optional(),
+  borderpad: z.number().optional(),
+});
+
 const GraphOptionsSchema = z.object({
   title: z.string().optional(),
   xAxisLabel: z.string().optional(),
@@ -102,6 +116,7 @@ const GraphOptionsSchema = z.object({
   yAxisScale: z.enum(['linear', 'log']).optional(),
   errorBarType: z.enum(['sem', 'sd', 'ci', 'none']).optional(),
   showLegend: z.boolean().optional(),
+  annotations: z.array(ChartAnnotationSchema).optional(),
 });
 
 const GraphSchema = z.object({

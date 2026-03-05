@@ -3,8 +3,49 @@ import type { AnalysisResult } from '../../types';
 
 export function runDescriptive(
   columnLabels: string[],
-  rows: (number | null)[][]
+  rows: (number | null)[][],
+  groupLabels?: string[],
+  groupForColumn?: number[]
 ): AnalysisResult {
+  const hasGroups =
+    groupLabels?.length &&
+    groupForColumn?.length === columnLabels.length;
+
+  if (hasGroups && groupLabels && groupForColumn) {
+    const byColumn = groupLabels.map((label, g) => {
+      const vals: number[] = [];
+      rows.forEach((r) => {
+        columnLabels.forEach((_, c) => {
+          if (groupForColumn[c] === g) {
+            const v = r[c];
+            if (v != null && Number.isFinite(v)) vals.push(v);
+          }
+        });
+      });
+      const n = vals.length;
+      if (n === 0) {
+        return {
+          label,
+          n: 0,
+          mean: NaN,
+          sem: NaN,
+          sd: NaN,
+          median: NaN,
+          q1: NaN,
+          q3: NaN,
+        };
+      }
+      const mean = jStat.mean(vals);
+      const sd = n > 1 ? jStat.stdev(vals, true) : 0;
+      const sem = n > 1 ? sd / Math.sqrt(n) : 0;
+      const median = jStat.median(vals);
+      const q1 = jStat.percentile(vals, 0.25);
+      const q3 = jStat.percentile(vals, 0.75);
+      return { label, n, mean, sem, sd, median, q1, q3 };
+    });
+    return { type: 'descriptive', byColumn };
+  }
+
   const byColumn = columnLabels.map((label, c) => {
     const vals = rows
       .map((r) => r[c])

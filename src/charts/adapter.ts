@@ -18,6 +18,17 @@ export type PlotlyTrace = {
     array: number[];
     visible: boolean;
   };
+  marker?: { size?: number; opacity?: number; color?: string };
+};
+
+/** When present, merge into layout (e.g. bar chart x-axis tick labels). */
+export type BarChartLayout = {
+  xaxis: {
+    type: 'linear';
+    tickvals: number[];
+    ticktext: string[];
+    range?: [number, number];
+  };
 };
 
 function colMeans(rows: (number | null)[][], nCols: number): number[] {
@@ -46,20 +57,38 @@ function colSD(rows: (number | null)[][], nCols: number): number[] {
   });
 }
 
+const JITTER_WIDTH = 0.22;
+
+/** Deterministic jitter so the plot is stable across re-renders. */
+function jitter(step: number): number {
+  const t = (step % 11) / 11;
+  return (t - 0.5) * 2 * JITTER_WIDTH;
+}
+
+export type BuildPlotlyResult = {
+  traces: PlotlyTrace[];
+  layout?: BarChartLayout;
+};
+
 export function buildPlotlySpec(
   graphType: GraphTypeId,
   tableData: ColumnTableData | XYTableData,
   analysisResult: AnalysisResult | undefined,
   graphOptions: GraphOptions
-): PlotlyTrace[] {
+): BuildPlotlyResult {
   const errorBarType = graphOptions.errorBarType ?? 'sem';
 
   if (graphType === 'bar' && 'columnLabels' in tableData) {
-    const labels = tableData.columnLabels;
-    const rows = tableData.rows;
+    const { columnLabels: labels, rows, groupLabels, groupForColumn } = tableData;
+    const hasGroups =
+      groupLabels?.length && groupForColumn?.length === labels.length;
+    const xLabels = hasGroups ? groupLabels! : labels;
+    const nBars = xLabels.length;
+    const xNumeric = xLabels.map((_, i) => i);
+
     let y: number[];
     let errorArray: number[] | undefined;
-    if (analysisResult?.type === 'descriptive') {
+    if (analysisResult?.type === 'descriptive' && analysisResult.byColumn.length === nBars) {
       y = analysisResult.byColumn.map((col) => col.mean);
       if (errorBarType !== 'none') {
         if (errorBarType === 'sem') {
@@ -71,29 +100,124 @@ export function buildPlotlySpec(
           errorArray = sem.map((s) => 1.96 * s);
         }
       }
+    } else if (hasGroups && groupLabels && groupForColumn) {
+      const groupMeans = groupLabels.map((_, g) => {
+        const vals: number[] = [];
+        rows.forEach((r) => {
+          labels.forEach((_, c) => {
+            if (groupForColumn[c] === g) {
+              const v = r[c];
+              if (v != null && Number.isFinite(v)) vals.push(v);
+            }
+          });
+        });
+        return vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      });
+      const groupSEM = groupLabels.map((_, g) => {
+        const vals: number[] = [];
+        rows.forEach((r) => {
+          labels.forEach((_, c) => {
+            if (groupForColumn[c] === g) {
+              const v = r[c];
+              if (v != null && Number.isFinite(v)) vals.push(v);
+            }
+          });
+        });
+        if (vals.length < 2) return 0;
+        const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+        const variance = vals.reduce((s, v) => s + (v - mean) ** 2, 0) / (vals.length - 1);
+        return Math.sqrt(variance) / Math.sqrt(vals.length);
+      });
+      const groupSD = groupLabels.map((_, g) => {
+        const vals: number[] = [];
+        rows.forEach((r) => {
+          labels.forEach((_, c) => {
+            if (groupForColumn[c] === g) {
+              const v = r[c];
+              if (v != null && Number.isFinite(v)) vals.push(v);
+            }
+          });
+        });
+        if (vals.length < 2) return 0;
+        const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+        return Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / (vals.length - 1));
+      });
+      y = groupMeans;
+      if (errorBarType !== 'none') {
+        errorArray =
+          errorBarType === 'sem' ? groupSEM : errorBarType === 'sd' ? groupSD : groupSEM.map((s) => 1.96 * s);
+      }
     } else {
       y = colMeans(rows, labels.length);
       if (errorBarType !== 'none') {
         errorArray = errorBarType === 'sem' ? colSEM(rows, labels.length) : colSD(rows, labels.length);
       }
     }
-    const hovertext = labels.map((label, i) => {
+    const hovertext = xLabels.map((label, i) => {
       const val = y[i];
       const err = errorArray?.[i];
       return err != null && err > 0
         ? `${label}: ${val.toFixed(2)} ± ${err.toFixed(2)}`
         : `${label}: ${val.toFixed(2)}`;
     });
-    const trace: PlotlyTrace = {
-      x: labels,
+    const barTrace: PlotlyTrace = {
+      x: xNumeric,
       y,
       type: 'bar',
       hovertext,
+      name: 'Mean',
     };
     if (errorArray && errorArray.some((e) => e > 0)) {
-      trace.error_y = { type: 'data', array: errorArray, visible: true };
+      barTrace.error_y = { type: 'data', array: errorArray, visible: true };
     }
-    return [trace];
+
+    // Overlay raw data points (one per value), jittered on x (deterministic)
+    const scatterX: number[] = [];
+    const scatterY: number[] = [];
+    let step = 0;
+    if (hasGroups && groupLabels && groupForColumn) {
+      groupLabels.forEach((_, g) => {
+        rows.forEach((r) => {
+          labels.forEach((_, c) => {
+            if (groupForColumn[c] === g) {
+              const v = r[c];
+              if (v != null && Number.isFinite(v)) {
+                scatterX.push(g + jitter(step++));
+                scatterY.push(v);
+              }
+            }
+          });
+        });
+      });
+    } else {
+      labels.forEach((_, c) => {
+        rows.forEach((r) => {
+          const v = r[c];
+          if (v != null && Number.isFinite(v)) {
+            scatterX.push(c + jitter(step++));
+            scatterY.push(v);
+          }
+        });
+      });
+    }
+    const scatterTrace: PlotlyTrace = {
+      x: scatterX,
+      y: scatterY,
+      type: 'scatter',
+      mode: 'markers',
+      name: 'Data points',
+      marker: { size: 6, opacity: 0.85 },
+    };
+
+    const layout: BarChartLayout = {
+      xaxis: {
+        type: 'linear',
+        tickvals: xNumeric,
+        ticktext: xLabels,
+        range: [-0.6, nBars - 0.4],
+      },
+    };
+    return { traces: [barTrace, scatterTrace], layout };
   }
 
   if (
@@ -129,7 +253,7 @@ export function buildPlotlySpec(
         name: 'Fit',
       });
     }
-    return traces;
+    return { traces };
   }
 
   if (graphType === 'doseResponse' && analysisResult?.type === 'dose_response_4pl' && 'x' in tableData) {
@@ -150,14 +274,14 @@ export function buildPlotlySpec(
         name: '4PL fit',
       },
     ];
-    return traces;
+    return { traces };
   }
 
   if (graphType === 'doseResponse' && 'x' in tableData) {
     const x = tableData.x.map((v) => (v != null && Number.isFinite(v) ? v : 0));
     const y = (tableData.ys[0] ?? []).map((v) => (v != null && Number.isFinite(v) ? v : 0));
-    return [{ x, y, type: 'scatter', mode: 'markers', name: tableData.yLabels[0] ?? 'Y' }];
+    return { traces: [{ x, y, type: 'scatter', mode: 'markers', name: tableData.yLabels[0] ?? 'Y' }] };
   }
 
-  return [];
+  return { traces: [] };
 }

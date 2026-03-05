@@ -31,7 +31,12 @@ export function runAnalysis(
     }
     return {
       ok: true,
-      value: runDescriptive(tableData.columnLabels, tableData.rows),
+      value: runDescriptive(
+        tableData.columnLabels,
+        tableData.rows,
+        tableData.groupLabels,
+        tableData.groupForColumn
+      ),
     };
   }
 
