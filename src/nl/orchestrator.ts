@@ -41,7 +41,7 @@ export async function handleUserMessage(
 ): Promise<OrchestratorResult> {
   const outcomes: string[] = [];
   if (!callLLM) {
-    return { success: false, outcomes: [], error: 'Chat requires an LLM. Set VITE_GROQ_API_KEY or VITE_ANTHROPIC_API_KEY in .env.local.' };
+    return { success: false, outcomes: [], error: 'Chat requires an LLM. Set VITE_GROQ_API_KEY, VITE_ANTHROPIC_API_KEY, or VITE_OPENAI_COMPATIBLE_* in .env.local.' };
   }
   const context = buildContext(getState());
   const systemMessage = `You are a helpful assistant for a data analysis app (like GraphPad Prism). You have access to tools. Use the context below to answer. Only use the tools when the user asks to run an analysis, create a graph, create a table, or list options. Reply briefly.\n\nContext:\n${context}`;

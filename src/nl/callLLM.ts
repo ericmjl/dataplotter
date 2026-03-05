@@ -1,6 +1,7 @@
 import { generateText, tool } from 'ai';
 import { createGroq } from '@ai-sdk/groq';
 import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
 import type { LLMCall } from './orchestrator';
 import {
   runAnalysisArgsSchema,
@@ -13,6 +14,9 @@ import {
 
 const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
 const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
+const OPENAI_COMPATIBLE_BASE_URL = import.meta.env.VITE_OPENAI_COMPATIBLE_BASE_URL as string | undefined;
+const OPENAI_COMPATIBLE_API_KEY = import.meta.env.VITE_OPENAI_COMPATIBLE_API_KEY as string | undefined;
+const OPENAI_COMPATIBLE_MODEL = (import.meta.env.VITE_OPENAI_COMPATIBLE_MODEL as string | undefined)?.trim() || 'gpt-4o-mini';
 
 function getModel() {
   if (GROQ_KEY?.trim()) {
@@ -22,6 +26,13 @@ function getModel() {
   if (ANTHROPIC_KEY?.trim()) {
     const anthropic = createAnthropic({ apiKey: ANTHROPIC_KEY });
     return { model: anthropic('claude-sonnet-4-20250514'), provider: 'anthropic' as const };
+  }
+  if (OPENAI_COMPATIBLE_BASE_URL?.trim() && OPENAI_COMPATIBLE_API_KEY?.trim()) {
+    const openai = createOpenAI({
+      baseURL: OPENAI_COMPATIBLE_BASE_URL.trim(),
+      apiKey: OPENAI_COMPATIBLE_API_KEY.trim(),
+    });
+    return { model: openai(OPENAI_COMPATIBLE_MODEL), provider: 'openai-compatible' as const };
   }
   return null;
 }
@@ -79,8 +90,9 @@ export const callLLM: LLMCall | null = (() => {
   };
 })();
 
-export function getLLMProvider(): 'groq' | 'anthropic' | null {
+export function getLLMProvider(): 'groq' | 'anthropic' | 'openai-compatible' | null {
   if (GROQ_KEY?.trim()) return 'groq';
   if (ANTHROPIC_KEY?.trim()) return 'anthropic';
+  if (OPENAI_COMPATIBLE_BASE_URL?.trim() && OPENAI_COMPATIBLE_API_KEY?.trim()) return 'openai-compatible';
   return null;
 }
