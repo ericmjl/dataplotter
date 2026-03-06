@@ -6,8 +6,8 @@
 
 | Path | Purpose |
 |------|--------|
-| `package.json` | Scripts, dependencies (React, Vite, AI SDK, Plotly, Zustand, Zod). |
-| `vite.config.ts` | Vite config: React plugin, node polyfills, `global` define for Plotly. |
+| `package.json` | Scripts, dependencies (React, Vite, AI SDK, Plotly, Zustand, Zod). Scripts: `dev`, `build`, `preview`, `electron:dev`, `electron:build`. |
+| `vite.config.ts` | Vite config: React plugin, node polyfills, `global` define for Plotly; `base` set to `./` when `ELECTRON=1` for Electron build. |
 | `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript config. |
 | `eslint.config.js` | ESLint config. |
 | `cypress.config.ts` | Cypress E2E config (baseUrl, spec pattern). |
@@ -15,6 +15,7 @@
 | `index.html` | Single HTML entry; script loads `src/main.tsx`. |
 | `.env.example` | Example env vars; copy to `.env.local` (gitignored). |
 | `docs/` | Documentation (Diataxis). |
+| `electron/` | Electron main and preload scripts for desktop build. See [Distribution](#distribution). |
 
 ## Source: `src/`
 
@@ -95,3 +96,9 @@
 ## Tests
 
 - `*.test.ts` next to source (e.g. `src/engine/statistics/descriptive.test.ts`, `src/lib/importProject.test.ts`, `src/lib/tableRegistry.test.ts`). Run with `npm test`.
+
+## Distribution
+
+- **Electron:** `electron/main.cjs` is the main process (creates window, loads dev URL or `dist/index.html`). `electron/preload.cjs` exposes `window.electronAPI` (platform, versions) with context isolation. No API keys are passed through the main process.
+- **Scripts:** `npm run electron:dev` runs the Vite dev server and opens the app in Electron (single command). `npm run electron:build` builds the web app with `base: './'` then runs electron-builder; installers go to `release/` (e.g. `release/Dataplotter-0.0.0-arm64.dmg` on macOS).
+- **How-to:** [how-to-build-electron-app.md](../how-to-guides/how-to-build-electron-app.md).

@@ -305,6 +305,7 @@ function AnalysisResultTable({ result }: { result: import('../types').AnalysisRe
     const r2 = Number(result.r2);
     const p = Number(result.p);
     const [ci0, ci1] = result.slopeCI;
+    const hasInterceptCI = result.interceptCI != null;
     return (
       <table className="data-grid" aria-label="Linear regression results">
         <tbody>
@@ -312,19 +313,27 @@ function AnalysisResultTable({ result }: { result: import('../types').AnalysisRe
           <tr><td>Intercept</td><td>{Number.isFinite(intercept) ? intercept.toFixed(4) : '—'}</td></tr>
           <tr><td>R²</td><td>{Number.isFinite(r2) ? r2.toFixed(4) : '—'}</td></tr>
           <tr><td>p</td><td>{Number.isFinite(p) ? p.toFixed(4) : '—'}</td></tr>
-          <tr><td>95% CI (slope)</td><td>[{Number.isFinite(ci0) ? ci0.toFixed(4) : '—'}, {Number.isFinite(ci1) ? ci1.toFixed(4) : '—'}]</td></tr>
+          <tr><td>{hasInterceptCI ? '95% CrI (slope)' : '95% CI (slope)'}</td><td>[{Number.isFinite(ci0) ? ci0.toFixed(4) : '—'}, {Number.isFinite(ci1) ? ci1.toFixed(4) : '—'}]</td></tr>
+          {hasInterceptCI && result.interceptCI && (
+            <tr><td>95% CrI (intercept)</td><td>[{result.interceptCI[0].toFixed(4)}, {result.interceptCI[1].toFixed(4)}]</td></tr>
+          )}
         </tbody>
       </table>
     );
   }
   if (result.type === 'dose_response_4pl') {
+    const hasCrI = result.bottomCI != null || result.topCI != null || result.hillSlopeCI != null;
     return (
       <table className="data-grid" aria-label="4PL dose-response results">
         <tbody>
           <tr><td>EC50</td><td>{result.ec50.toFixed(4)}</td></tr>
+          <tr><td>95% CrI (EC50)</td><td>[{result.ec50CI[0].toFixed(4)}, {result.ec50CI[1].toFixed(4)}]</td></tr>
           <tr><td>Bottom</td><td>{result.bottom.toFixed(4)}</td></tr>
+          {hasCrI && result.bottomCI && <tr><td>95% CrI (bottom)</td><td>[{result.bottomCI[0].toFixed(4)}, {result.bottomCI[1].toFixed(4)}]</td></tr>}
           <tr><td>Top</td><td>{result.top.toFixed(4)}</td></tr>
+          {hasCrI && result.topCI && <tr><td>95% CrI (top)</td><td>[{result.topCI[0].toFixed(4)}, {result.topCI[1].toFixed(4)}]</td></tr>}
           <tr><td>Hill slope</td><td>{result.hillSlope.toFixed(4)}</td></tr>
+          {hasCrI && result.hillSlopeCI && <tr><td>95% CrI (hill slope)</td><td>[{result.hillSlopeCI[0].toFixed(4)}, {result.hillSlopeCI[1].toFixed(4)}]</td></tr>}
         </tbody>
       </table>
     );

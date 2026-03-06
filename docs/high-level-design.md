@@ -1,7 +1,7 @@
 # High-Level Design: GraphPad Prism Clone (Dataplotter)
 
-**Created**: 2026-03-06  
-**Status**: In progress (phased implementation; see [plan](planning/prism-clone.2026-03-06.md) and [EARS](specs/prism-clone-specs.md))  
+**Created**: 2026-03-06
+**Status**: In progress (phased implementation; see [plan](planning/prism-clone.2026-03-06.md) and [EARS](specs/prism-clone-specs.md))
 **Related**: [Architecture](reference/architecture.md), [Design decisions](explanation/design-decisions.md)
 
 ---
@@ -12,11 +12,11 @@
 
 **Goals:**
 
-1. **Prism-like workflow in the browser:** Create tables by format (XY, Column, Grouped, etc.), enter or import data, run analyses constrained by table type, and create graphs that stay linked to data and (where applicable) analysis results. No scripting required.
+1. **Prism-like workflow in the browser and, optionally, as a desktop app:** Create tables by format (XY, Column, Grouped, etc.), enter or import data, run analyses constrained by table type, and create graphs that stay linked to data and (where applicable) analysis results. No scripting required. The app is available in the browser and can be distributed as a desktop app (Electron).
 2. **Build on dataplotter:** Extend the existing app (Zustand state, table/analysis/graph model, Plotly charts, NL chat, JSON save, Prism/Pzfx import) rather than replace it. Add missing table formats, analyses, and graph types in the same architecture.
 3. **Full analysis parity:** Reimplement all Prism analysis types (parametric and nonparametric: t-tests, ANOVA, regression, contingency, survival, dose-response, ROC, Bland–Altman, etc.) so the clone supports the same analyses as Prism, specified and phased in LLDs and EARS.
 4. **Prism file round-trip:** Support both import and export of .pzfx/.prism so users can open Prism projects and save back to Prism-compatible files.
-5. **Same technical constraints:** Remain a single-page, browser-only app; no backend required; analyses run in the browser (current engine plus Bayesian layer; optional Pyodide/PyMC for richer models).
+5. **Same technical constraints:** Single-page app (browser and/or desktop); no backend required; analyses run in the browser (current engine plus Bayesian layer; optional Pyodide/PyMC for richer models).
 
 ---
 
@@ -75,8 +75,15 @@ The system stays the same as current dataplotter at the top level:
 
 - **No scripting or macro language:** All workflows are GUI- and chat-driven. No Prism-style scripting.
 - **No commercial licensing or activation:** No trial limits or license keys; open-source or non-commercial use.
-- **No desktop installers:** Web-only; no Electron or native Prism file association.
+- **No required desktop install:** Web remains a first-class target. Electron is an optional distribution channel; no requirement to ship installers.
 - **No three separate “guides”:** Single documentation set; no need to mirror Prism’s Statistics / Curve Fitting / User Guide split.
+
+---
+
+## 5b. Distribution
+
+- **Web:** Primary target. Build with Vite; run with `npm run dev` / `npm run build` / `npm run preview`. Deploy as static assets.
+- **Desktop (optional):** Electron build produces standalone installers (e.g. .dmg, .exe, AppImage). Same UI and engine; no backend. API keys and secrets are never in the build; users configure them in the app (Settings).
 
 ---
 

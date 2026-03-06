@@ -28,6 +28,8 @@ import { runLinearRegression } from './regression';
 import { runDoseResponse4pl } from './doseResponse4pl';
 import { addDescriptiveBayesianFields } from '../bayesian/descriptive';
 import { getPyodide, runDescriptivePyMC } from '../pymc/descriptive';
+import { runRegressionPyMC } from '../pymc/regression';
+import { runDoseResponse4plPyMC } from '../pymc/doseResponse4pl';
 
 export function runAnalysis(
   format: TableFormatId,
@@ -245,9 +247,10 @@ export function runAnalysis(
 }
 
 /**
- * Async entry point for analyses (HLD §6). Uses PyMC for Bayesian descriptive when available;
- * falls back to sync runAnalysis + TS conjugate for other types or when Pyodide/PyMC unavailable.
- * @spec Establishes pattern for PRISM-ANA-001 through PRISM-ANA-005 (Bayesian)
+ * Async entry point for analyses (HLD §6). Defaults to PyMC in WASM for Bayesian models:
+ * descriptive, linear regression, dose-response 4PL. Falls back to sync runAnalysis (TS) only
+ * when Pyodide/PyMC is unavailable or fails.
+ * @spec PRISM-ANA-001 through PRISM-ANA-005 (Bayesian by default)
  */
 export async function runAnalysisAsync(
   format: TableFormatId,
@@ -329,6 +332,121 @@ export async function runAnalysisAsync(
       ok: true,
       value: addDescriptiveBayesianFields(base) as AnalysisResult,
     };
+  }
+
+  if (analysisType === 'linear_regression') {
+    if (format !== 'xy' || !('x' in tableData)) {
+      return { ok: false, error: 'Linear regression requires XY table.' };
+    }
+    const opts = options as { type: 'linear_regression'; ySeriesLabel?: string };
+    let yIdx = 0;
+    if (opts.ySeriesLabel) {
+      const idx = tableData.yLabels.indexOf(opts.ySeriesLabel);
+      if (idx === -1) {
+        return { ok: false, error: `Y series "${opts.ySeriesLabel}" not found.` };
+      }
+      yIdx = idx;
+    }
+    const xRaw = tableData.x;
+    const yRaw = tableData.ys[yIdx] ?? [];
+    const pairs: { x: number; y: number }[] = [];
+    for (let i = 0; i < xRaw.length; i++) {
+      const xi = xRaw[i];
+      const yi = yRaw[i];
+      if (
+        xi != null && Number.isFinite(xi) &&
+        yi != null && Number.isFinite(yi)
+      ) {
+        pairs.push({ x: xi, y: yi });
+      }
+    }
+    if (pairs.length < 2) {
+      return { ok: true, value: runLinearRegression(xRaw, yRaw) };
+    }
+    const xArr = pairs.map((p) => p.x);
+    const yArr = pairs.map((p) => p.y);
+    try {
+      const pyodide = await getPyodide();
+      if (pyodide) {
+        const result = await runRegressionPyMC(pyodide, xArr, yArr);
+        return {
+          ok: true,
+          value: {
+            type: 'linear_regression',
+            slope: result.slope,
+            intercept: result.intercept,
+            r2: result.r2,
+            p: result.p,
+            slopeCI: result.slopeCI,
+            interceptCI: result.interceptCI,
+            curve: result.curve,
+          },
+        };
+      }
+    } catch (_) {
+      // fall through to TS
+    }
+    return Promise.resolve(
+      runAnalysis(format, 'linear_regression', tableData, options)
+    );
+  }
+
+  if (analysisType === 'dose_response_4pl') {
+    if (format !== 'xy' || !('x' in tableData)) {
+      return { ok: false, error: '4PL dose-response requires XY table.' };
+    }
+    const opts = options as { type: 'dose_response_4pl'; logX: boolean };
+    const xRaw = tableData.x;
+    const yRaw = tableData.ys[0] ?? [];
+    const pairs: { x: number; y: number }[] = [];
+    for (let i = 0; i < xRaw.length; i++) {
+      const xi = xRaw[i];
+      const yi = yRaw[i];
+      if (
+        xi != null && Number.isFinite(xi) &&
+        yi != null && Number.isFinite(yi)
+      ) {
+        pairs.push({ x: xi, y: yi });
+      }
+    }
+    if (pairs.length < 4) {
+      return Promise.resolve(
+        runAnalysis(format, 'dose_response_4pl', tableData, options)
+      );
+    }
+    const xArr = pairs.map((p) => p.x);
+    const yArr = pairs.map((p) => p.y);
+    try {
+      const pyodide = await getPyodide();
+      if (pyodide) {
+        const result = await runDoseResponse4plPyMC(
+          pyodide,
+          xArr,
+          yArr,
+          opts.logX
+        );
+        return {
+          ok: true,
+          value: {
+            type: 'dose_response_4pl',
+            ec50: result.ec50,
+            ec50CI: result.ec50CI,
+            bottom: result.bottom,
+            top: result.top,
+            hillSlope: result.hillSlope,
+            curve: result.curve,
+            bottomCI: result.bottomCI,
+            topCI: result.topCI,
+            hillSlopeCI: result.hillSlopeCI,
+          },
+        };
+      }
+    } catch (_) {
+      // fall through to TS
+    }
+    return Promise.resolve(
+      runAnalysis(format, 'dose_response_4pl', tableData, options)
+    );
   }
 
   return Promise.resolve(runAnalysis(format, analysisType, tableData, options));

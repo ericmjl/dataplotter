@@ -3,6 +3,7 @@ import { createGroq } from '@ai-sdk/groq';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import type { LLMCall } from './orchestrator';
+import type { LLMSettings } from '../store/settingsSlice';
 import {
   runAnalysisArgsSchema,
   createGraphArgsSchema,
@@ -12,27 +13,32 @@ import {
   listGraphTypesArgsSchema,
 } from './schemas';
 
-const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
-const ANTHROPIC_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
-const OPENAI_COMPATIBLE_BASE_URL = import.meta.env.VITE_OPENAI_COMPATIBLE_BASE_URL as string | undefined;
-const OPENAI_COMPATIBLE_API_KEY = import.meta.env.VITE_OPENAI_COMPATIBLE_API_KEY as string | undefined;
-const OPENAI_COMPATIBLE_MODEL = (import.meta.env.VITE_OPENAI_COMPATIBLE_MODEL as string | undefined)?.trim() || 'gpt-4o-mini';
+/** In development only: fall back to env if settings are empty. Never use in production build. */
+function getEffectiveConfig(storeSettings: LLMSettings): LLMSettings {
+  if (import.meta.env.PROD) return storeSettings;
+  const groq = (storeSettings.groqApiKey?.trim() || (import.meta.env.VITE_GROQ_API_KEY as string | undefined)?.trim()) ?? '';
+  const anthropic = (storeSettings.anthropicApiKey?.trim() || (import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined)?.trim()) ?? '';
+  const baseUrl = (storeSettings.openaiCompatibleBaseUrl?.trim() || (import.meta.env.VITE_OPENAI_COMPATIBLE_BASE_URL as string | undefined)?.trim()) ?? '';
+  const openaiKey = (storeSettings.openaiCompatibleApiKey?.trim() || (import.meta.env.VITE_OPENAI_COMPATIBLE_API_KEY as string | undefined)?.trim()) ?? '';
+  const model = (storeSettings.openaiCompatibleModel?.trim() || (import.meta.env.VITE_OPENAI_COMPATIBLE_MODEL as string | undefined)?.trim()) || 'gpt-4o-mini';
+  return { groqApiKey: groq, anthropicApiKey: anthropic, openaiCompatibleBaseUrl: baseUrl, openaiCompatibleApiKey: openaiKey, openaiCompatibleModel: model };
+}
 
-function getModel() {
-  if (GROQ_KEY?.trim()) {
-    const groq = createGroq({ apiKey: GROQ_KEY });
-    return { model: groq('openai/gpt-oss-120b'), provider: 'groq' as const };
+function buildModelFromConfig(config: LLMSettings): { model: ReturnType<ReturnType<typeof createGroq>>; provider: 'groq' } | { model: ReturnType<ReturnType<typeof createAnthropic>>; provider: 'anthropic' } | { model: ReturnType<ReturnType<typeof createOpenAI>>; provider: 'openai-compatible' } | null {
+  if (config.groqApiKey?.trim()) {
+    const groq = createGroq({ apiKey: config.groqApiKey.trim() });
+    return { model: groq('openai/gpt-oss-120b'), provider: 'groq' };
   }
-  if (ANTHROPIC_KEY?.trim()) {
-    const anthropic = createAnthropic({ apiKey: ANTHROPIC_KEY });
-    return { model: anthropic('claude-sonnet-4-20250514'), provider: 'anthropic' as const };
+  if (config.anthropicApiKey?.trim()) {
+    const anthropic = createAnthropic({ apiKey: config.anthropicApiKey.trim() });
+    return { model: anthropic('claude-sonnet-4-20250514'), provider: 'anthropic' };
   }
-  if (OPENAI_COMPATIBLE_BASE_URL?.trim() && OPENAI_COMPATIBLE_API_KEY?.trim()) {
+  if (config.openaiCompatibleBaseUrl?.trim() && config.openaiCompatibleApiKey?.trim()) {
     const openai = createOpenAI({
-      baseURL: OPENAI_COMPATIBLE_BASE_URL.trim(),
-      apiKey: OPENAI_COMPATIBLE_API_KEY.trim(),
+      baseURL: config.openaiCompatibleBaseUrl.trim(),
+      apiKey: config.openaiCompatibleApiKey.trim(),
     });
-    return { model: openai(OPENAI_COMPATIBLE_MODEL), provider: 'openai-compatible' as const };
+    return { model: openai(config.openaiCompatibleModel?.trim() || 'gpt-4o-mini'), provider: 'openai-compatible' };
   }
   return null;
 }
@@ -64,8 +70,13 @@ const tools = {
   }),
 };
 
-export const callLLM: LLMCall | null = (() => {
-  const modelConfig = getModel();
+/**
+ * Returns an LLM call function for the given config, or null if no provider is configured.
+ * Config should come from the settings store (or getEffectiveConfig(store.llm) for dev fallback).
+ */
+export function getLLMCall(storeSettings: LLMSettings): LLMCall | null {
+  const config = getEffectiveConfig(storeSettings);
+  const modelConfig = buildModelFromConfig(config);
   if (!modelConfig) return null;
 
   return async (messages, _tools) => {
@@ -88,11 +99,12 @@ export const callLLM: LLMCall | null = (() => {
 
     return { content, toolCalls };
   };
-})();
+}
 
-export function getLLMProvider(): 'groq' | 'anthropic' | 'openai-compatible' | null {
-  if (GROQ_KEY?.trim()) return 'groq';
-  if (ANTHROPIC_KEY?.trim()) return 'anthropic';
-  if (OPENAI_COMPATIBLE_BASE_URL?.trim() && OPENAI_COMPATIBLE_API_KEY?.trim()) return 'openai-compatible';
+export function getLLMProvider(storeSettings: LLMSettings): 'groq' | 'anthropic' | 'openai-compatible' | null {
+  const config = getEffectiveConfig(storeSettings);
+  if (config.groqApiKey?.trim()) return 'groq';
+  if (config.anthropicApiKey?.trim()) return 'anthropic';
+  if (config.openaiCompatibleBaseUrl?.trim() && config.openaiCompatibleApiKey?.trim()) return 'openai-compatible';
   return null;
 }

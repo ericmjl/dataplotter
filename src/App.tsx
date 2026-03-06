@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from './store';
 import { Sidebar } from './components/Sidebar';
 import { TableView } from './components/TableView';
@@ -6,12 +6,14 @@ import { AnalysisPanel } from './components/AnalysisPanel';
 import { GraphView } from './components/GraphView';
 import { LayoutView } from './components/LayoutView';
 import { ChatPanel } from './components/ChatPanel';
+import { SettingsModal } from './components/SettingsModal';
 import { useProjectSaveLoad } from './hooks/useProjectSaveLoad';
 import './App.css';
 
 const AUTOSAVE_DEBOUNCE_MS = 1000;
 
 function App() {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const project = useStore((s) => s.project);
   const setProject = useStore((s) => s.setProject);
   const {
@@ -82,7 +84,11 @@ function App() {
               <button type="button" onClick={loadAsPrism} aria-label="Open .prism file">Open .prism</button>
               <button type="button" onClick={loadAsPzfx} aria-label="Open .pzfx file">Open .pzfx</button>
             </div>
+            <div className="header-group">
+              <button type="button" onClick={() => setSettingsOpen(true)} aria-label="Settings">Settings</button>
+            </div>
           </header>
+          {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
           {mainContent}
         </div>
         <ChatPanel />

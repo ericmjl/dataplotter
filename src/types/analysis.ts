@@ -150,7 +150,17 @@ export type AnalysisResult =
       intercept: number;
       r2: number;
       p: number;
+      /** 95% CI (frequentist) or credible interval (Bayesian) for slope. */
       slopeCI: [number, number];
+      /** 95% CI or CrI for intercept (Bayesian). */
+      interceptCI?: [number, number];
+      /** Curve and optional 95% CrI band for plotting (Bayesian). */
+      curve?: {
+        x: number[];
+        y: number[];
+        yLower?: number[];
+        yUpper?: number[];
+      };
     }
   | {
       type: 'dose_response_4pl';
@@ -159,7 +169,17 @@ export type AnalysisResult =
       bottom: number;
       top: number;
       hillSlope: number;
-      curve: { x: number[]; y: number[] };
+      curve: {
+        x: number[];
+        y: number[];
+        /** 95% CrI band for curve when available (Bayesian). */
+        yLower?: number[];
+        yUpper?: number[];
+      };
+      /** 95% CrI for bottom, top, hillSlope when available (e.g. bootstrap). */
+      bottomCI?: [number, number];
+      topCI?: [number, number];
+      hillSlopeCI?: [number, number];
     };
 
 export interface DescriptiveOptions {

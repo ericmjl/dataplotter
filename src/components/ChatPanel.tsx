@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import { handleUserMessage } from '../nl/orchestrator';
-import { callLLM } from '../nl/callLLM';
+import { getLLMCall } from '../nl/callLLM';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -36,6 +36,8 @@ export function ChatPanel() {
       updateGraphOptions: state.updateGraphOptions,
       setSelection: state.setSelection,
     };
+    const llmSettings = useStore.getState().settings.llm;
+    const callLLM = getLLMCall(llmSettings);
     const result = await handleUserMessage(msg, getState, actions, callLLM);
     setLoading(false);
     const reply = result.error ?? (result.outcomes.join(' ') || 'Done.');
@@ -48,7 +50,7 @@ export function ChatPanel() {
       <div className="chat-panel-messages">
         {messages.length === 0 && (
           <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
-            Ask to run analyses, create graphs, or tables. Set VITE_GROQ_API_KEY, VITE_ANTHROPIC_API_KEY, or VITE_OPENAI_COMPATIBLE_* in .env.local.
+            Ask to run analyses, create graphs, or tables. Set your API keys in Settings (header) to enable Chat.
           </p>
         )}
         {messages.map((m, i) => (

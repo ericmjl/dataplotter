@@ -30,7 +30,7 @@ This file gives **rules and conventions** for AI coding agents and human develop
 
 ### Chat / LLM
 
-- **Providers:** LLM selection is in `src/nl/callLLM.ts`. Priority: Groq → Anthropic → OpenAI-compatible. Add new providers there and document env vars in `.env.example` and [docs/reference/environment-variables.md](docs/reference/environment-variables.md).
+- **Providers:** LLM selection is in `src/nl/callLLM.ts`. Priority: Groq → Anthropic → OpenAI-compatible. API keys are configured in the app via Settings (never in the build); add new providers there and document in [docs/reference/environment-variables.md](docs/reference/environment-variables.md).
 - **Tools:** Tool definitions (Zod schemas) live in `src/nl/schemas.ts` and are passed to the AI SDK in `callLLM.ts`. Execution is in `src/nl/orchestrator.ts`. Keep tool names and argument shapes in sync.
 
 ### Persistence
@@ -57,6 +57,7 @@ This file gives **rules and conventions** for AI coding agents and human develop
 | I want to…              | See |
 |--------------------------|-----|
 | Run the app              | [docs/tutorials/getting-started.md](docs/tutorials/getting-started.md) |
+| Build / run Electron app | [docs/how-to-guides/how-to-build-electron-app.md](docs/how-to-guides/how-to-build-electron-app.md) |
 | Add a graph type         | [docs/how-to-guides/how-to-add-a-graph-type.md](docs/how-to-guides/how-to-add-a-graph-type.md) |
 | Add an analysis type     | [docs/how-to-guides/how-to-add-an-analysis-type.md](docs/how-to-guides/how-to-add-an-analysis-type.md) |
 | Add an LLM provider      | [docs/how-to-guides/how-to-add-an-llm-provider.md](docs/how-to-guides/how-to-add-an-llm-provider.md) |

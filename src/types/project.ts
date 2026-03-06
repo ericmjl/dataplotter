@@ -38,7 +38,8 @@ export type GraphTypeId =
   | 'scatterLine'
   | 'survival'
   | 'doseResponse'
-  | 'pie';
+  | 'pie'
+  | 'parameterBar';
 
 export interface ColumnTableData {
   columnLabels: string[];

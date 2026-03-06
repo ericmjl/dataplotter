@@ -24,9 +24,12 @@ export type PlotlyTrace = {
     visible: boolean;
   };
   marker?: { size?: number; opacity?: number; color?: string };
-  line?: { shape?: 'hv' };
+  line?: { shape?: 'hv'; width?: number };
   /** Plot on right Y-axis when 'y2'. */
   yaxis?: 'y' | 'y2';
+  /** Filled band (e.g. 95% CrI); use with fillcolor. */
+  fill?: 'toself' | 'tonexty';
+  fillcolor?: string;
 };
 
 export type PlotlyPieTrace = {
@@ -333,18 +336,40 @@ export function buildPlotlySpec(
       traces.push(trace);
     }
     if (analysisResult?.type === 'linear_regression') {
-      const { slope, intercept } = analysisResult;
-      const xMin = Math.min(...x);
-      const xMax = Math.max(...x);
-      const fitX = [xMin, xMax];
-      const fitY = fitX.map((xi) => slope * xi + intercept);
-      traces.push({
-        x: fitX,
-        y: fitY,
-        type: 'scatter',
-        mode: 'lines',
-        name: 'Fit',
-      });
+      const { slope, intercept, curve } = analysisResult;
+      if (curve?.yLower != null && curve?.yUpper != null && curve.x.length > 0) {
+        const bandX = [...curve.x, ...curve.x.slice().reverse()];
+        const bandY = [...curve.yUpper, ...curve.yLower.slice().reverse()];
+        traces.push({
+          x: bandX,
+          y: bandY,
+          type: 'scatter',
+          mode: 'lines',
+          name: '95% CrI',
+          fill: 'toself',
+          fillcolor: 'rgba(100, 150, 255, 0.2)',
+          line: { width: 0 },
+        });
+        traces.push({
+          x: curve.x,
+          y: curve.y,
+          type: 'scatter',
+          mode: 'lines',
+          name: 'Fit',
+        });
+      } else {
+        const xMin = Math.min(...x);
+        const xMax = Math.max(...x);
+        const fitX = [xMin, xMax];
+        const fitY = fitX.map((xi) => slope * xi + intercept);
+        traces.push({
+          x: fitX,
+          y: fitY,
+          type: 'scatter',
+          mode: 'lines',
+          name: 'Fit',
+        });
+      }
     }
     if (graphOptions.showLineOfIdentity && x.length > 0) {
       const xMin = Math.min(...x);
@@ -373,14 +398,28 @@ export function buildPlotlySpec(
         mode: 'markers',
         name: tableData.yLabels[0],
       },
-      {
-        x: curve.x,
-        y: curve.y,
+    ];
+    if (curve.yLower != null && curve.yUpper != null && curve.x.length > 0) {
+      const bandX = [...curve.x, ...curve.x.slice().reverse()];
+      const bandY = [...curve.yUpper, ...curve.yLower.slice().reverse()];
+      traces.push({
+        x: bandX,
+        y: bandY,
         type: 'scatter',
         mode: 'lines',
-        name: '4PL fit',
-      },
-    ];
+        name: '95% CrI',
+        fill: 'toself',
+        fillcolor: 'rgba(100, 150, 255, 0.2)',
+        line: { width: 0 },
+      });
+    }
+    traces.push({
+      x: curve.x,
+      y: curve.y,
+      type: 'scatter',
+      mode: 'lines',
+      name: '4PL fit',
+    });
     return { traces };
   }
 

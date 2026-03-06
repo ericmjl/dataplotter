@@ -38,13 +38,19 @@ export function runLinearRegression(
   const intercept = Number(beta[0]);
   const r2 = Number(compile.anova.r2);
   const slopeStats = compile.stats?.[1];
+  const interceptStats = compile.stats?.[0];
   const p = slopeStats != null ? Number(slopeStats[3]) : 1;
   const slopeSE = slopeStats != null ? Math.abs(Number(slopeStats[1]) ?? 0) : 0;
+  const interceptSE = interceptStats != null ? Math.abs(Number(interceptStats[1]) ?? 0) : 0;
   const df = pairs.length - 2;
   const tCrit = df > 0 ? jStat.studentt.inv(0.975, df) : 0;
   const slopeCI: [number, number] = [
     slope - tCrit * slopeSE,
     slope + tCrit * slopeSE,
+  ];
+  const interceptCI: [number, number] = [
+    intercept - tCrit * interceptSE,
+    intercept + tCrit * interceptSE,
   ];
   return {
     type: 'linear_regression',
@@ -53,5 +59,6 @@ export function runLinearRegression(
     r2,
     p,
     slopeCI,
+    interceptCI,
   };
 }

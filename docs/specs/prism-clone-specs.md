@@ -1,7 +1,7 @@
 # EARS: GraphPad Prism clone (Dataplotter)
 
-**Created**: 2026-03-06  
-**Design**: [HLD](../high-level-design.md), [LLDs](../llds/)  
+**Created**: 2026-03-06
+**Design**: [HLD](../high-level-design.md), [LLDs](../llds/)
 **Status markers**: `[x]` implemented, `[ ]` active gap, `[D]` deferred
 
 ---

@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -10,7 +11,9 @@
     "test": "vitest run",
     "test:e2e": "cypress run",
     "test:e2e:open": "cypress open",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "cross-env ELECTRON=1 npm run build && electron-builder"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",
@@ -31,6 +34,11 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "concurrently": "^9.1.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "cross-env": "^7.0.3",
+    "wait-on": "^8.0.1",
     "@eslint/js": "^9.39.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -50,5 +58,15 @@
     "vite": "^7.3.1",
     "vite-plugin-node-polyfills": "^0.25.0",
     "vitest": "^4.0.18"
+  },
+  "build": {
+    "appId": "com.dataplotter.app",
+    "productName": "Dataplotter",
+    "directories": { "output": "release" },
+    "files": ["dist", "electron"],
+    "publish": null,
+    "mac": { "category": "public.app-category.developer-tools", "target": ["dmg"] },
+    "win": { "target": ["nsis"] },
+    "linux": { "target": ["AppImage"] }
   }
 }
