@@ -8,6 +8,7 @@ import { LayoutView } from './components/LayoutView';
 import { ChatPanel } from './components/ChatPanel';
 import { SettingsModal } from './components/SettingsModal';
 import { useProjectSaveLoad } from './hooks/useProjectSaveLoad';
+import { useAutoRunAnalyses } from './hooks/useAutoRunAnalyses';
 import './App.css';
 
 const AUTOSAVE_DEBOUNCE_MS = 1000;
@@ -15,6 +16,7 @@ const AUTOSAVE_DEBOUNCE_MS = 1000;
 function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const project = useStore((s) => s.project);
+  useAutoRunAnalyses();
   const setProject = useStore((s) => s.setProject);
   const {
     saveToFile,

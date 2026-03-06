@@ -77,6 +77,22 @@
 
 ---
 
+## In-table transformations (TRANSFORM)
+
+**Reference:** [LLD: Transformations](../llds/transformations.md)
+
+- [x] **TRANSFORM-001**: The system shall allow defining a per-column transformation on Column and XY tables via an equation (e.g. log10(y)) and store it as metadata on the table (no new table).
+- [x] **TRANSFORM-002**: The system shall evaluate transformation equations in a restricted way (allowlist of variable names and functions only; no arbitrary code execution).
+- [x] **TRANSFORM-003**: The system shall provide a resolver that, given a table and mode (raw | transformed), returns effective table data in the same shape; raw mode or no transformations returns raw data; transformed mode returns data with transformations applied row-wise.
+- [x] **TRANSFORM-004**: The system shall allow the user to toggle the table view between raw and transformed; when showing transformed, the grid shall display resolved data and be read-only.
+- [x] **TRANSFORM-005**: The system shall allow the user to choose per-analysis whether to use raw or transformed data (dataMode), and pass the corresponding effective data when running the analysis.
+- [x] **TRANSFORM-006**: The system shall allow the user to choose per-graph whether to use raw or transformed data (dataMode), and pass the corresponding effective data when building the chart.
+- [x] **TRANSFORM-007**: The system shall clear analysis results for a table when that table's transformations are added, edited, or removed (same as when raw data changes).
+- [x] **TRANSFORM-008**: The system shall persist transformations and viewMode on the table and dataMode on analyses and graphs in JSON save/load; old projects without these fields shall load with defaults (raw).
+- [x] **TRANSFORM-009**: The system shall support add, edit, and remove of a column transformation from the table UI.
+
+---
+
 ## Traceability summary
 
 | Area    | Implemented | Active gap | Deferred |
@@ -85,5 +101,6 @@
 | ANA     | 14          | 0          | 0        |
 | GPH     | 10          | 0          | 0        |
 | WKF     | 10          | 0          | 2        |
+| TRANSFORM | 9         | 0          | 0        |
 
 Implementation plans in `docs/planning/` should reference these spec IDs by phase.

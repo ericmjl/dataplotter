@@ -3,7 +3,8 @@ import Plot from 'react-plotly.js';
 import Plotly from 'plotly.js';
 import { useStore } from '../store';
 import { buildPlotlySpec } from '../charts/adapter';
-import type { PlotlyTrace, PlotlyPieTrace } from '../charts/adapter';
+import { getEffectiveTableData } from '../lib/effectiveTableData';
+import type { PlotlyTrace, PlotlyPieTrace, PlotlyBoxTrace } from '../charts/adapter';
 
 /** @spec PRISM-WKF-006 */
 export function LayoutView() {
@@ -172,24 +173,25 @@ export function LayoutView() {
           const analysis = graph.analysisId
             ? project.analyses.find((a) => a.id === graph.analysisId)
             : undefined;
-          const spec = table
+          const tableDataForGraph = table ? getEffectiveTableData(table, graph.options.dataMode ?? 'raw') : null;
+          const spec = table && tableDataForGraph
             ? buildPlotlySpec(
                 graph.graphType,
-                table.data,
+                tableDataForGraph,
                 analysis?.result,
                 graph.options
               )
-            : { traces: [] as (PlotlyTrace | PlotlyPieTrace)[] };
+            : { traces: [] as (PlotlyTrace | PlotlyPieTrace | PlotlyBoxTrace)[] };
           const barLayout = spec.layout;
-          const isBarChart =
-            graph.graphType === 'bar' || graph.graphType === 'groupedBar';
+          const isCategoricalX =
+            graph.graphType === 'bar' || graph.graphType === 'groupedBar' || graph.graphType === 'box';
           const plotLayout: Record<string, unknown> = {
             title: graph.options.title ?? graph.name,
             xaxis: barLayout?.xaxis
               ? { ...barLayout.xaxis, title: graph.options.xAxisLabel }
               : {
                   title: graph.options.xAxisLabel,
-                  type: isBarChart ? 'category' : (graph.options.xAxisScale ?? 'linear'),
+                  type: isCategoricalX ? 'category' : (graph.options.xAxisScale ?? 'linear'),
                 },
             yaxis: {
               title: graph.options.yAxisLabel,

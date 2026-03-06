@@ -42,7 +42,7 @@ const CONTINGENCY_ANALYSES: AnalysisTypeId[] = ['chi_square', 'fisher_exact'];
 const SURVIVAL_ANALYSES: AnalysisTypeId[] = ['kaplan_meier'];
 const PARTS_OF_WHOLE_ANALYSES: AnalysisTypeId[] = ['fraction_of_total'];
 
-const COLUMN_GRAPH_TYPES: GraphTypeId[] = ['bar'];
+const COLUMN_GRAPH_TYPES: GraphTypeId[] = ['bar', 'box'];
 const XY_GRAPH_TYPES: GraphTypeId[] = [
   'scatter',
   'line',

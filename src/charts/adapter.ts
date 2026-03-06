@@ -39,6 +39,14 @@ export type PlotlyPieTrace = {
   name?: string;
 };
 
+/** Box plot: one box per category; x is index (0,1,2,...) per point for layout tickvals. */
+export type PlotlyBoxTrace = {
+  type: 'box';
+  x: number[];
+  y: number[];
+  name?: string;
+};
+
 /** When present, merge into layout (e.g. bar chart x-axis tick labels). */
 export type BarChartLayout = {
   xaxis: {
@@ -84,7 +92,7 @@ function jitter(step: number): number {
 }
 
 export type BuildPlotlyResult = {
-  traces: (PlotlyTrace | PlotlyPieTrace)[];
+  traces: (PlotlyTrace | PlotlyPieTrace | PlotlyBoxTrace)[];
   layout?: BarChartLayout;
 };
 
@@ -311,6 +319,46 @@ export function buildPlotlySpec(
       },
     };
     return { traces: [barTrace, scatterTrace], layout };
+  }
+
+  if (graphType === 'box' && 'columnLabels' in tableData && !('cellValues' in tableData)) {
+    const { columnLabels: labels, rows } = tableData;
+    const boxX: number[] = [];
+    const boxY: number[] = [];
+    const scatterX: number[] = [];
+    const scatterY: number[] = [];
+    let step = 0;
+    labels.forEach((_, c) => {
+      rows.forEach((r) => {
+        const v = r[c];
+        if (v != null && Number.isFinite(v)) {
+          boxX.push(c);
+          boxY.push(v);
+          scatterX.push(c + jitter(step++));
+          scatterY.push(v);
+        }
+      });
+    });
+    if (boxX.length === 0) return { traces: [] };
+    const boxTrace: PlotlyBoxTrace = { type: 'box', x: boxX, y: boxY };
+    const scatterTrace: PlotlyTrace = {
+      x: scatterX,
+      y: scatterY,
+      type: 'scatter',
+      mode: 'markers',
+      name: 'Data points',
+      marker: { size: 6, opacity: 0.85 },
+    };
+    const nBoxes = labels.length;
+    const layout: BarChartLayout = {
+      xaxis: {
+        type: 'linear',
+        tickvals: labels.map((_, i) => i),
+        ticktext: labels,
+        range: [-0.6, nBoxes - 0.4],
+      },
+    };
+    return { traces: [boxTrace, scatterTrace], layout };
   }
 
   if (

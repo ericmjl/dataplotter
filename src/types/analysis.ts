@@ -252,19 +252,20 @@ export interface DoseResponse4plOptions {
   logX: boolean;
 }
 
+/** @spec TRANSFORM-005 Optional data mode (raw vs transformed) for all analysis types. */
 export type AnalysisOptions =
-  | DescriptiveOptions
-  | UnpairedTtestOptions
-  | PairedTtestOptions
-  | OneWayAnovaOptions
-  | TwoWayAnovaOptions
-  | ChiSquareOptions
-  | FisherExactOptions
-  | KaplanMeierOptions
-  | FractionOfTotalOptions
-  | MannWhitneyOptions
-  | KruskalWallisOptions
-  | RocAucOptions
-  | NormalityTestOptions
-  | LinearRegressionOptions
-  | DoseResponse4plOptions;
+  | (DescriptiveOptions & { dataMode?: 'raw' | 'transformed' })
+  | (UnpairedTtestOptions & { dataMode?: 'raw' | 'transformed' })
+  | (PairedTtestOptions & { dataMode?: 'raw' | 'transformed' })
+  | (OneWayAnovaOptions & { dataMode?: 'raw' | 'transformed' })
+  | (TwoWayAnovaOptions & { dataMode?: 'raw' | 'transformed' })
+  | (ChiSquareOptions & { dataMode?: 'raw' | 'transformed' })
+  | (FisherExactOptions & { dataMode?: 'raw' | 'transformed' })
+  | (KaplanMeierOptions & { dataMode?: 'raw' | 'transformed' })
+  | (FractionOfTotalOptions & { dataMode?: 'raw' | 'transformed' })
+  | (MannWhitneyOptions & { dataMode?: 'raw' | 'transformed' })
+  | (KruskalWallisOptions & { dataMode?: 'raw' | 'transformed' })
+  | (RocAucOptions & { dataMode?: 'raw' | 'transformed' })
+  | (NormalityTestOptions & { dataMode?: 'raw' | 'transformed' })
+  | (LinearRegressionOptions & { dataMode?: 'raw' | 'transformed' })
+  | (DoseResponse4plOptions & { dataMode?: 'raw' | 'transformed' });

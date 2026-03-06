@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { getSchema, validateTableData, getAllowedAnalyses, getAllowedGraphTypes, getDefaultOptions } from '../lib/tableRegistry';
+import type { TableSchema } from '../lib/tableRegistry';
+import { getEffectiveTableData } from '../lib/effectiveTableData';
 import { DataGrid } from './DataGrid';
 import { GroupedDataGrid } from './GroupedDataGrid';
 import { ContingencyDataGrid } from './ContingencyDataGrid';
 import { SurvivalDataGrid } from './SurvivalDataGrid';
 import { PartsOfWholeDataGrid } from './PartsOfWholeDataGrid';
 import type { AnalysisTypeId, GraphTypeId, ColumnTableData, XYTableData, GroupedTableData, ContingencyTableData, SurvivalTableData, PartsOfWholeTableData } from '../types';
+import type { ColumnTransformation, TransformId } from '../types/transformations';
+import { PREDEFINED_TRANSFORMS } from '../lib/transformRegistry';
 
 type ViewMode = 'wide' | 'tidy';
 
@@ -90,9 +94,98 @@ function TidyTable({
   );
 }
 
+function TransformColumnDialog({
+  schema,
+  existing,
+  onSave,
+  onClose,
+}: {
+  schema: TableSchema;
+  existing: ColumnTransformation[];
+  onSave: (list: ColumnTransformation[]) => void;
+  onClose: () => void;
+}) {
+  const firstColId = schema.columns[0]?.id ?? '';
+  const existingForCol = (key: string) => existing.find((t) => t.columnKey === key)?.transformId;
+  const [columnKey, setColumnKey] = useState(firstColId);
+  const [transformId, setTransformId] = useState<TransformId | ''>(() => existingForCol(firstColId) ?? '');
+  const hasExisting = existing.some((t) => t.columnKey === columnKey);
+
+  const handleColumnChange = (key: string) => {
+    setColumnKey(key);
+    setTransformId(existingForCol(key) ?? '');
+  };
+
+  const handleSave = () => {
+    const rest = existing.filter((t) => t.columnKey !== columnKey);
+    if (transformId) {
+      onSave([...rest, { columnKey, transformId: transformId as TransformId }]);
+    } else {
+      onSave(rest);
+    }
+  };
+
+  const handleRemove = () => {
+    onSave(existing.filter((t) => t.columnKey !== columnKey));
+  };
+
+  return (
+    <div className="transform-dialog" role="dialog" aria-label="Transform column">
+      <p className="transform-dialog-title">Apply a transformation to a column</p>
+      <div className="transform-dialog-field">
+        <label htmlFor="transform-column-select">Column</label>
+        <select
+          id="transform-column-select"
+          value={columnKey}
+          onChange={(e) => handleColumnChange(e.target.value)}
+          aria-label="Column to transform"
+        >
+          {schema.columns.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="transform-dialog-field">
+        <label htmlFor="transform-type-select">Transformation</label>
+        <select
+          id="transform-type-select"
+          value={transformId}
+          onChange={(e) => setTransformId(e.target.value as TransformId | '')}
+          aria-label="Transformation type"
+        >
+          <option value="">None</option>
+          {PREDEFINED_TRANSFORMS.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="toolbar transform-dialog-actions">
+        <button type="button" className="btn-primary" onClick={handleSave}>
+          {hasExisting ? 'Update' : 'Apply'}
+        </button>
+        {hasExisting && (
+          <button type="button" className="btn-ghost" onClick={handleRemove} aria-label="Remove transformation">
+            Remove
+          </button>
+        )}
+        <button type="button" className="btn-ghost" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function TableView() {
   const project = useStore((s) => s.project);
   const updateTableData = useStore((s) => s.updateTableData);
+  const removeTableColumn = useStore((s) => s.removeTableColumn);
+  const setTableViewMode = useStore((s) => s.setTableViewMode);
+  const setTableTransformations = useStore((s) => s.setTableTransformations);
   const renameTable = useStore((s) => s.renameTable);
   const addAnalysis = useStore((s) => s.addAnalysis);
   const addGraph = useStore((s) => s.addGraph);
@@ -100,6 +193,8 @@ export function TableView() {
   const [addAnalysisOpen, setAddAnalysisOpen] = useState(false);
   const [addGraphOpen, setAddGraphOpen] = useState(false);
   const [copySetupOpen, setCopySetupOpen] = useState(false);
+  const [transformDialogOpen, setTransformDialogOpen] = useState(false);
+  const [deleteColumnOpen, setDeleteColumnOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('wide');
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
@@ -129,12 +224,17 @@ export function TableView() {
   const tableFormat = table.format;
   const tableName = table.name;
   const tableData = table.data;
+  const dataForGrid = getEffectiveTableData(table, table.viewMode ?? 'raw');
+  const hasTransformations = (table.format === 'column' || table.format === 'xy') && (table.transformations?.length ?? 0) > 0;
+  const gridReadOnly = table.viewMode === 'transformed';
 
   function handleDataChange(newData: typeof tableData) {
+    if (gridReadOnly) return;
     updateTableData(tableId, newData);
   }
 
   function handleAddRow() {
+    if (gridReadOnly) return;
     if (tableFormat === 'column' && 'rows' in tableData) {
       const cols = tableData.columnLabels.length;
       updateTableData(tableId, {
@@ -152,6 +252,7 @@ export function TableView() {
   }
 
   function handleAddColumn() {
+    if (gridReadOnly) return;
     if (tableFormat === 'column' && 'columnLabels' in tableData) {
       const d = tableData as ColumnTableData;
       const { columnLabels, rows, groupLabels, groupForColumn } = d;
@@ -195,6 +296,17 @@ export function TableView() {
   const isPartsOfWhole = tableFormat === 'partsOfWhole' && 'values' in tableData;
   const allowedAnalyses = getAllowedAnalyses(tableFormat);
   const allowedGraphTypes = getAllowedGraphTypes(tableFormat);
+
+  const deletableColumns =
+    tableFormat === 'column' && 'columnLabels' in tableData
+      ? (tableData as ColumnTableData).columnLabels.length > 1
+        ? schema.columns
+        : []
+      : tableFormat === 'xy' && 'yLabels' in tableData
+        ? (tableData as XYTableData).yLabels.length > 1
+          ? schema.columns.filter((c) => c.id.startsWith('y-'))
+          : []
+        : [];
 
   function handleAddAnalysis(analysisType: AnalysisTypeId) {
     const options = getDefaultOptions(tableFormat, analysisType, tableData);
@@ -282,7 +394,27 @@ export function TableView() {
             Tidy
           </button>
         </div>
-        {!isGrouped && !isContingency && !isSurvival && !isPartsOfWhole && (
+        {hasTransformations && (
+          <div className="view-mode-toggle" role="group" aria-label="Show raw or transformed data">
+            <button
+              type="button"
+              className={table.viewMode !== 'transformed' ? 'active' : ''}
+              onClick={() => setTableViewMode(tableId, 'raw')}
+              aria-pressed={table.viewMode !== 'transformed'}
+            >
+              Raw
+            </button>
+            <button
+              type="button"
+              className={table.viewMode === 'transformed' ? 'active' : ''}
+              onClick={() => setTableViewMode(tableId, 'transformed')}
+              aria-pressed={table.viewMode === 'transformed'}
+            >
+              Transformed
+            </button>
+          </div>
+        )}
+        {!isGrouped && !isContingency && !isSurvival && !isPartsOfWhole && !gridReadOnly && (
           <>
             <button type="button" onClick={handleAddRow} aria-label="Add row">
               Add row
@@ -290,6 +422,38 @@ export function TableView() {
             <button type="button" onClick={handleAddColumn} aria-label="Add column">
               Add column
             </button>
+            {deletableColumns.length > 0 && (
+              <div style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeleteColumnOpen((o) => !o)}
+                  aria-label="Delete column"
+                  aria-expanded={deleteColumnOpen}
+                  aria-haspopup="listbox"
+                >
+                  Delete column…
+                </button>
+                {deleteColumnOpen && (
+                  <ul role="listbox" className="dropdown-menu">
+                    {deletableColumns.map((c) => (
+                      <li key={c.id}>
+                        <button
+                          type="button"
+                          role="option"
+                          className="dropdown-item"
+                          onClick={() => {
+                            removeTableColumn(tableId, c.id);
+                            setDeleteColumnOpen(false);
+                          }}
+                        >
+                          {c.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </>
         )}
         <div style={{ position: 'relative' }}>
@@ -346,6 +510,31 @@ export function TableView() {
             </ul>
           )}
         </div>
+        {!isGrouped && !isContingency && !isSurvival && !isPartsOfWhole && (
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setTransformDialogOpen((o) => !o)}
+              aria-label="Add or edit column transformation"
+              aria-expanded={transformDialogOpen}
+              aria-haspopup="dialog"
+              title="Define equation for a column (e.g. log10(y0))"
+            >
+              Transform column…
+            </button>
+            {transformDialogOpen && (
+              <TransformColumnDialog
+                schema={schema}
+                existing={table.transformations ?? []}
+                onSave={(list) => {
+                  setTableTransformations(tableId, list);
+                  setTransformDialogOpen(false);
+                }}
+                onClose={() => setTransformDialogOpen(false)}
+              />
+            )}
+          </div>
+        )}
         <div style={{ position: 'relative' }}>
           <button
             type="button"
@@ -409,14 +598,15 @@ export function TableView() {
         <DataGrid
           schema={schema}
           format={formatForGrid}
-          data={tableData as ColumnTableData | XYTableData}
+          data={dataForGrid as ColumnTableData | XYTableData}
           onDataChange={(d) => handleDataChange(d)}
+          readOnly={gridReadOnly}
           aria-label={`Data for ${tableName}`}
         />
       ) : (
         <TidyTable
           format={formatForGrid}
-          data={tableData as ColumnTableData | XYTableData}
+          data={dataForGrid as ColumnTableData | XYTableData}
           aria-label={`Tidy view of ${tableName}`}
         />
       )}

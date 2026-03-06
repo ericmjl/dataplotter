@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { runAnalysisAsync } from '../engine/statistics';
+import { getEffectiveTableData } from '../lib/effectiveTableData';
 
 export function AnalysisPanel() {
   const project = useStore((s) => s.project);
   const updateAnalysisResult = useStore((s) => s.updateAnalysisResult);
   const updateAnalysisError = useStore((s) => s.updateAnalysisError);
+  const updateAnalysisOptions = useStore((s) => s.updateAnalysisOptions);
   const selection = project.selection;
   const [running, setRunning] = useState(false);
 
@@ -35,6 +37,10 @@ export function AnalysisPanel() {
     );
   }
 
+  const dataMode = (analysis.options as { dataMode?: 'raw' | 'transformed' }).dataMode ?? 'raw';
+  const effectiveData = getEffectiveTableData(table, dataMode);
+  const hasTransformations = (table.format === 'column' || table.format === 'xy') && (table.transformations?.length ?? 0) > 0;
+
   async function handleRun() {
     if (!table || !analysis) return;
     setRunning(true);
@@ -42,7 +48,7 @@ export function AnalysisPanel() {
       const result = await runAnalysisAsync(
         table.format,
         analysis.type,
-        table.data,
+        effectiveData,
         analysis.options
       );
       if (result.ok) {
@@ -66,6 +72,19 @@ export function AnalysisPanel() {
     <div className="main-area" role="region" aria-label="Analysis panel">
       <h2 style={{ marginTop: 0 }}>{analysis.type}</h2>
       <div className="toolbar">
+        {hasTransformations && (
+          <div role="group" aria-label="Use raw or transformed data">
+            <select
+              className="toolbar-select"
+              value={dataMode}
+              onChange={(e) => updateAnalysisOptions(analysis.id, { dataMode: e.target.value as 'raw' | 'transformed' })}
+              aria-label="Use raw or transformed table data"
+            >
+              <option value="raw">Use raw data</option>
+              <option value="transformed">Use transformed data</option>
+            </select>
+          </div>
+        )}
         <button
           type="button"
           onClick={handleRun}

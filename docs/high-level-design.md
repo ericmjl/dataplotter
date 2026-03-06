@@ -54,7 +54,7 @@ The system stays the same as current dataplotter at the top level:
 - **Table formats:** Column, XY, **Grouped** (two-way; cell replicates), **Contingency** (integer counts), **Survival** (time + event ± group), **Parts of whole** (labels + values). Each has data shape, registry (allowed analyses/graphs), schema/validation, and UI (DataGrid or specialized grid).
 - **Analyses:** Descriptive, unpaired/paired t-test, one-way/two-way ANOVA, linear regression, dose-response 4PL; **Chi-square**, **Fisher’s exact**; **Kaplan–Meier**; **fraction of total**; **Mann–Whitney**, **Kruskal–Wallis**; **ROC AUC**; **normality test**. Single `runAnalysis()` (and async path for Bayesian); engine branches by format and analysis type. Bayesian-by-default: see §6.
 - **Graph types:** Bar, grouped bar, scatter/line/scatterLine, dose-response, **survival** (step curves), **pie**; error bars, log axes, **two Y-axes**, **line of identity**; graph export **PNG/SVG**. Optional later: heat map, forest plot, box-and-whisker. See LLD graphs-and-charts.
-- **Data prep:** **Normality test** (Column) implemented; transform, normalize, remove baseline, identify outliers in scope (Phase 9). See LLD analyses-and-engine.
+- **Data prep:** **Normality test** (Column) implemented. **In-table transformations** are in scope: users define column transformations via an equation (e.g. log10(y)), toggle between raw and transformed view in the table, and choose per-analysis and per-graph whether to use raw or transformed data; transformations stay linked to the same table (no new tables). See LLD [Transformations](llds/transformations.md). Transform, normalize, remove baseline, identify outliers (Phase 9). See LLD analyses-and-engine.
 - **Workflows:** **Layouts** (layout sheet, add/remove graphs, export layout PNG); **wand** (copy analysis/graph setup from one table to another); **rename table** (from sidebar or main UI; name in store propagates everywhere). Apply style from example and info sheets deferred. See LLD project-and-workflows.
 
 ---
@@ -104,6 +104,6 @@ Statistical analyses in the clone use **Bayesian estimation by default**: report
 
 **Next:** Low-Level Designs (LLDs), EARS specifications, and the implementation plan.
 
-- **LLDs:** [Data tables and formats](llds/data-tables-and-formats.md), [Analyses and engine](llds/analyses-and-engine.md), [Graphs and charts](llds/graphs-and-charts.md), [Project and workflows](llds/project-and-workflows.md).
+- **LLDs:** [Data tables and formats](llds/data-tables-and-formats.md), [Analyses and engine](llds/analyses-and-engine.md), [Graphs and charts](llds/graphs-and-charts.md), [Project and workflows](llds/project-and-workflows.md), [Transformations](llds/transformations.md).
 - **EARS:** [Prism clone specs](specs/prism-clone-specs.md) — PRISM-TBL, PRISM-ANA, PRISM-GPH, PRISM-WKF.
 - **Implementation plan:** [prism-clone.2026-03-06](planning/prism-clone.2026-03-06.md) — phased execution with spec traceability.

@@ -42,6 +42,11 @@ const PartsOfWholeTableDataSchema = z.object({
   values: z.array(z.number()),
 });
 
+const ColumnTransformationSchema = z.object({
+  columnKey: z.string(),
+  transformId: z.string(),
+});
+
 const DataTableSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -54,6 +59,9 @@ const DataTableSchema = z.object({
     SurvivalTableDataSchema,
     PartsOfWholeTableDataSchema,
   ]),
+  transformations: z.array(ColumnTransformationSchema).optional(),
+  viewMode: z.enum(['raw', 'transformed']).optional(),
+  tableDataVersion: z.number().optional(),
 });
 
 const DescriptiveResultSchema = z.object({
@@ -258,6 +266,7 @@ const GraphOptionsSchema = z.object({
   annotations: z.array(ChartAnnotationSchema).optional(),
   showLineOfIdentity: z.boolean().optional(),
   yAxis2SeriesIndex: z.number().optional(),
+  dataMode: z.enum(['raw', 'transformed']).optional(),
 });
 
 const GraphSchema = z.object({

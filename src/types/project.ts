@@ -32,6 +32,7 @@ export type AnalysisTypeId =
 
 export type GraphTypeId =
   | 'bar'
+  | 'box'
   | 'groupedBar'
   | 'scatter'
   | 'line'
@@ -98,6 +99,12 @@ export interface DataTable {
     | ContingencyTableData
     | SurvivalTableData
     | PartsOfWholeTableData;
+  /** @spec TRANSFORM-001 Per-column transformation equations (Column and XY only). */
+  transformations?: ColumnTransformation[];
+  /** @spec TRANSFORM-004 Display mode for the table grid (raw vs transformed). */
+  viewMode?: TableViewMode;
+  /** Incremented when data/transformations change; used to ignore stale auto-run results. */
+  tableDataVersion?: number;
 }
 
 export const CURRENT_PROJECT_VERSION = 1;
@@ -128,6 +135,7 @@ export type Selection =
 
 import type { Analysis } from './analysis';
 import type { Graph } from './graph';
+import type { ColumnTransformation, TableViewMode } from './transformations';
 
 export interface Project {
   version: number;

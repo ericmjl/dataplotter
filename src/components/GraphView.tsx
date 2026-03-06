@@ -3,7 +3,8 @@ import Plot from 'react-plotly.js';
 import Plotly from 'plotly.js';
 import { useStore } from '../store';
 import { buildPlotlySpec } from '../charts/adapter';
-import type { PlotlyTrace } from '../charts/adapter';
+import { getEffectiveTableData } from '../lib/effectiveTableData';
+import type { PlotlyTrace, PlotlyPieTrace, PlotlyBoxTrace } from '../charts/adapter';
 import type { ChartAnnotation } from '../types/graph';
 
 type SelectedPoint = { label: string; value: number } | null;
@@ -43,18 +44,22 @@ export function GraphView() {
     ? project.analyses.find((a) => a.id === graph.analysisId)
     : undefined;
 
-  const spec = table
+  const graphDataMode = graph.options.dataMode ?? 'raw';
+  const tableDataForGraph = table ? getEffectiveTableData(table, graphDataMode) : null;
+
+  const spec = table && tableDataForGraph
     ? buildPlotlySpec(
         graph.graphType,
-        table.data,
+        tableDataForGraph,
         analysis?.result,
         graph.options
       )
-    : { traces: [] as PlotlyTrace[] };
+    : { traces: [] as (PlotlyTrace | PlotlyPieTrace | PlotlyBoxTrace)[] };
   const data = spec.traces;
   const barLayout = spec.layout;
 
-  const isBarChart = graph.graphType === 'bar' || graph.graphType === 'groupedBar';
+  const isCategoricalX =
+    graph.graphType === 'bar' || graph.graphType === 'groupedBar' || graph.graphType === 'box';
   const hasSecondY = graph.options.yAxis2SeriesIndex != null;
   const layout: Record<string, unknown> = {
     title: graph.options.title ?? graph.name,
@@ -62,7 +67,7 @@ export function GraphView() {
       ? { ...barLayout.xaxis, title: graph.options.xAxisLabel }
       : {
           title: graph.options.xAxisLabel,
-          type: isBarChart ? 'category' : (graph.options.xAxisScale ?? 'linear'),
+          type: isCategoricalX ? 'category' : (graph.options.xAxisScale ?? 'linear'),
         },
     yaxis: {
       title: graph.options.yAxisLabel,
@@ -141,10 +146,23 @@ export function GraphView() {
     );
   }
 
+  const hasTransformations = table && (table.format === 'column' || table.format === 'xy') && (table.transformations?.length ?? 0) > 0;
+
   return (
     <div className="main-area" role="region" aria-label="Graph view">
       <h2 style={{ marginTop: 0 }}>{graph.name}</h2>
       <div className="toolbar">
+        {hasTransformations && (
+          <select
+            className="toolbar-select"
+            value={graphDataMode}
+            onChange={(e) => updateGraphOptions(graphId, { dataMode: e.target.value as 'raw' | 'transformed' })}
+            aria-label="Use raw or transformed table data"
+          >
+            <option value="raw">Use raw data</option>
+            <option value="transformed">Use transformed data</option>
+          </select>
+        )}
         {isXY && (
           <>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
@@ -162,6 +180,7 @@ export function GraphView() {
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 Right Y-axis:
                 <select
+                  className="toolbar-select"
                   value={graph.options.yAxis2SeriesIndex ?? ''}
                   onChange={(e) =>
                     updateGraphOptions(graphId, {

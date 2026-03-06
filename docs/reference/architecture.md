@@ -23,6 +23,10 @@
 4. **User runs analysis** → `AnalysisPanel` calls `runAnalysis()` from engine → `updateAnalysisResult` or `updateAnalysisError`.
 5. **Graph view** → Reads selected graph, its table, and optional analysis result → `buildPlotlySpec()` in `charts/adapter.ts` → Plotly traces and layout → `GraphView` renders `<Plot>` (react-plotly.js). Bar charts use `xaxis.type: 'category'`.
 
+## Transformations and effective data
+
+Table data can be shown and used in two modes: **raw** (stored) or **transformed** (equations applied per column). Raw data and transformation metadata live on the table (`table.data`, `table.transformations`, `table.viewMode`). Consumers do not read `table.data` directly when transformations exist; they call **`getEffectiveTableData(table, mode)`** in `src/lib/effectiveTableData.ts`, which returns data in the same shape (ColumnTableData or XYTableData). The engine and chart adapter receive this effective data; their signatures do not change. **Table view** uses `table.viewMode` (raw vs transformed) for the grid; when showing transformed, the grid is read-only. **Analysis** and **graph** each have an option **dataMode** (raw | transformed); when running an analysis or building a chart, the app passes `getEffectiveTableData(table, analysis.options.dataMode ?? 'raw')` or `graph.options.dataMode ?? 'raw'`. Changing raw data or transformation definitions clears analysis results for that table.
+
 ## Chat / NL layer
 
 1. **User sends message** → `ChatPanel` calls `handleUserMessage(msg, getState, actions, callLLM)` in `orchestrator.ts`.

@@ -27,6 +27,8 @@ export interface GraphOptions {
   showLineOfIdentity?: boolean;
   /** Index of Y series to plot on right Y-axis (0-based); only one series supported. PRISM-GPH-010 */
   yAxis2SeriesIndex?: number;
+  /** @spec TRANSFORM-006 Use raw or transformed table data for this graph. */
+  dataMode?: 'raw' | 'transformed';
 }
 
 export interface Graph {

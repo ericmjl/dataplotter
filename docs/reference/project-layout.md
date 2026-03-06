@@ -52,6 +52,7 @@
 | File | Role |
 |------|------|
 | `project.ts` | TableId, AnalysisId, GraphId; TableFormatId, AnalysisTypeId, GraphTypeId; ColumnTableData, XYTableData; DataTable, Project, Selection. |
+| `transformations.ts` | ColumnTransformation, TableViewMode, DataMode (for in-table transformations). |
 | `analysis.ts` | Analysis, analysis options. |
 | `analysisSchemas.ts` | Zod schemas for analysis options (discriminated union). |
 | `graph.ts` | Graph, GraphOptions. |
@@ -65,6 +66,8 @@
 | `src/data/sampleColumn.ts`, `sampleXY.ts` | Sample table data and names for “New from sample”. |
 | `src/engine/statistics/` | Analysis implementations: descriptive, t-test, anova, regression, dose-response; `index.ts` exports `runAnalysis()`. |
 | `src/engine/curveFitting/fourPL.ts` | 4PL curve for dose-response. |
+| `src/lib/effectiveTableData.ts` | Resolver: `getEffectiveTableData(table, mode)` returns raw or transformed table data in same shape. |
+| `src/lib/equationEval.ts` | Safe equation evaluator for column transformations (allowlist of variables and functions). |
 
 ## Charts & IO
 

@@ -7,6 +7,8 @@ interface DataGridProps {
   format: 'column' | 'xy';
   data: ColumnTableData | XYTableData;
   onDataChange: (data: ColumnTableData | XYTableData) => void;
+  /** When true, cells and column headers are not editable (e.g. transformed view). */
+  readOnly?: boolean;
   'aria-label'?: string;
 }
 
@@ -22,6 +24,7 @@ export function DataGrid({
   format,
   data,
   onDataChange,
+  readOnly = false,
   'aria-label': ariaLabel = 'Data grid',
 }: DataGridProps) {
   const [localData, setLocalData] = useState<ColumnTableData | XYTableData>(data);
@@ -80,7 +83,7 @@ export function DataGrid({
               </th>
               {columnLabels.map((label, i) => (
                 <th key={i} scope="col">
-                  {editingColIndex === i ? (
+                  {!readOnly && editingColIndex === i ? (
                     <input
                       type="text"
                       className="data-grid-header-input"
@@ -101,9 +104,10 @@ export function DataGrid({
                     <button
                       type="button"
                       className="data-grid-header-label"
-                      onClick={() => handleStartEdit(i)}
-                      aria-label={`Rename column ${label}`}
-                      title="Click to rename column"
+                      onClick={() => !readOnly && handleStartEdit(i)}
+                      aria-label={readOnly ? undefined : `Rename column ${label}`}
+                      title={readOnly ? undefined : 'Click to rename column'}
+                      disabled={readOnly}
                     >
                       {label}
                     </button>
@@ -126,7 +130,8 @@ export function DataGrid({
                       className="cell-input"
                       aria-label={`Row ${rowIdx + 1}, ${columnLabels[colIdx] ?? 'column'}`}
                       value={val === null ? '' : String(val)}
-                      onChange={(e) => {
+                      readOnly={readOnly}
+                      onChange={readOnly ? undefined : (e) => {
                         const next = rows.map((r, ri) =>
                           ri === rowIdx
                             ? r.map((c, ci) =>
@@ -136,7 +141,7 @@ export function DataGrid({
                         );
                         setLocalData({ columnLabels, rows: next });
                       }}
-                      onBlur={commit}
+                      onBlur={readOnly ? undefined : commit}
                     />
                   </td>
                 ))}
@@ -181,12 +186,13 @@ export function DataGrid({
                     className="cell-input"
                     aria-label={`Row ${rowIdx + 1}, ${xLabel}`}
                     value={x[rowIdx] === null ? '' : String(x[rowIdx])}
-                    onChange={(e) => {
+                    readOnly={readOnly}
+                    onChange={readOnly ? undefined : (e) => {
                       const newX = [...x];
                       newX[rowIdx] = parseCell(e.target.value);
                       setLocalData({ xLabel, yLabels, x: newX, ys });
                     }}
-                    onBlur={commit}
+                    onBlur={readOnly ? undefined : commit}
                   />
                 </td>
                 {ys.map((col, colIdx) => (
@@ -197,7 +203,8 @@ export function DataGrid({
                       className="cell-input"
                       aria-label={`Row ${rowIdx + 1}, ${yLabels[colIdx] ?? 'Y'}`}
                       value={col[rowIdx] === null ? '' : String(col[rowIdx])}
-                      onChange={(e) => {
+                      readOnly={readOnly}
+                      onChange={readOnly ? undefined : (e) => {
                         const newYs = ys.map((c, ci) =>
                           ci === colIdx
                             ? c.map((v, ri) =>
@@ -207,7 +214,7 @@ export function DataGrid({
                         );
                         setLocalData({ xLabel, yLabels, x, ys: newYs });
                       }}
-                      onBlur={commit}
+                      onBlur={readOnly ? undefined : commit}
                     />
                   </td>
                 ))}
