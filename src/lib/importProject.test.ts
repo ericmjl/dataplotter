@@ -38,6 +38,7 @@ describe('importProject', () => {
       ],
       analyses: [],
       graphs: [],
+      layouts: [],
       selection: null,
     };
     const json = exportProject(project as import('../types').Project);

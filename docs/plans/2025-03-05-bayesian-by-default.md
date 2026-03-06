@@ -69,7 +69,8 @@
 
 ### Task 1: Extend AnalysisResult types for Bayesian outputs
 
-**Files:**  
+**Files:**
+
 - Modify: `src/types/analysis.ts`
 
 **Steps:**
@@ -88,8 +89,9 @@
 
 ### Task 2: Bayesian descriptive (conjugate Normal-Normal)
 
-**Files:**  
-- Create: `src/engine/bayesian/descriptive.ts`  
+**Files:**
+
+- Create: `src/engine/bayesian/descriptive.ts`
 - Modify: `src/engine/statistics/index.ts` (or `src/engine/bayesian/index.ts`) to call it for `descriptive`.
 
 **Steps:**
@@ -105,8 +107,9 @@
 
 ### Task 3: Bayesian unpaired t-test
 
-**Files:**  
-- Create: `src/engine/bayesian/ttest.ts`  
+**Files:**
+
+- Create: `src/engine/bayesian/ttest.ts`
 - Modify: `src/engine/statistics/index.ts` to use it for `unpaired_ttest`.
 
 **Steps:**
@@ -122,8 +125,9 @@
 
 ### Task 4: Bayesian one-way ANOVA
 
-**Files:**  
-- Create: `src/engine/bayesian/anova.ts`  
+**Files:**
+
+- Create: `src/engine/bayesian/anova.ts`
 - Modify: `src/engine/statistics/index.ts` to use it for `one_way_anova`.
 
 **Steps:**
@@ -138,8 +142,9 @@
 
 ### Task 5: Bayesian linear regression
 
-**Files:**  
-- Create: `src/engine/bayesian/regression.ts`  
+**Files:**
+
+- Create: `src/engine/bayesian/regression.ts`
 - Modify: `src/engine/statistics/index.ts` to use it for `linear_regression`.
 
 **Steps:**
@@ -154,13 +159,14 @@
 
 ### Task 6: Bayesian dose-response 4PL (MCMC in JS or defer to PyMC)
 
-**Files:**  
-- Modify: `src/engine/curveFitting/fourPL.ts` or create `src/engine/bayesian/doseResponse4pl.ts`  
+**Files:**
+
+- Modify: `src/engine/curveFitting/fourPL.ts` or create `src/engine/bayesian/doseResponse4pl.ts`
 - Modify: `src/engine/statistics/index.ts` for `dose_response_4pl`.
 
 **Steps:**
 
-1. **Option A (preferred for “no PyMC”):** Implement a simple MCMC (Metropolis–Hastings or use bayes.js) for the 4PL model: likelihood Normal(y | 4PL(x; bottom, top, ec50, hillSlope), σ), weak priors on parameters. Summarize posterior for ec50, bottom, top, hillSlope; compute 95% CrIs and fill `ec50CI` and optional CrIs for other params.  
+1. **Option A (preferred for “no PyMC”):** Implement a simple MCMC (Metropolis–Hastings or use bayes.js) for the 4PL model: likelihood Normal(y | 4PL(x; bottom, top, ec50, hillSlope), σ), weak priors on parameters. Summarize posterior for ec50, bottom, top, hillSlope; compute 95% CrIs and fill `ec50CI` and optional CrIs for other params.
 2. **Option B (defer):** Keep current 4PL point estimate; add a TODO and document that full Bayesian 4PL will come with PyMC path. Still extend result type so UI can show CrIs when present.
 3. Add test for Option A if implemented; wire into `runAnalysis()`.
 
@@ -170,7 +176,8 @@
 
 ### Task 7: Update AnalysisPanel UI to show Bayesian labels
 
-**Files:**  
+**Files:**
+
 - Modify: `src/components/AnalysisPanel.tsx`
 
 **Steps:**
@@ -187,9 +194,10 @@
 
 ### Task 8: Optional — Pyodide + PyMC integration (async path)
 
-**Files:**  
-- Create: `src/engine/pymc/loadPyodide.ts` (load Pyodide, install PyMC via micropip).  
-- Create: `src/engine/pymc/runPyMC.ts` (per-model Python strings, run via `pyodide.runPythonAsync`, parse ArviZ summary back to AnalysisResult).  
+**Files:**
+
+- Create: `src/engine/pymc/loadPyodide.ts` (load Pyodide, install PyMC via micropip).
+- Create: `src/engine/pymc/runPyMC.ts` (per-model Python strings, run via `pyodide.runPythonAsync`, parse ArviZ summary back to AnalysisResult).
 - Modify: `src/engine/statistics/index.ts` or store to support “use PyMC” option and call async path; **Modify:** `src/components/AnalysisPanel.tsx` to support async run (loading state, await), and optionally a setting or analysis option “Use PyMC (WASM).”
 
 **Steps:**

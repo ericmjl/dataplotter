@@ -61,3 +61,54 @@ export function runUnpairedTtest(
     label2: columnLabels[1],
   };
 }
+
+/** Paired t-test: one-sample t-test on differences (col1 - col2). @spec PRISM-ANA-006 */
+export function runPairedTtest(
+  columnLabels: [string, string],
+  rows: (number | null)[][],
+  colIndices: [number, number]
+): AnalysisResult {
+  const [i1, i2] = colIndices;
+  const diffs: number[] = [];
+  for (let r = 0; r < rows.length; r++) {
+    const a = rows[r][i1];
+    const b = rows[r][i2];
+    if (a != null && Number.isFinite(a) && b != null && Number.isFinite(b)) {
+      diffs.push(a - b);
+    }
+  }
+  const n = diffs.length;
+  if (n < 2) {
+    return {
+      type: 'paired_ttest',
+      t: NaN,
+      p: NaN,
+      df: n - 1,
+      meanDiff: n === 1 ? diffs[0]! : NaN,
+      ci: [NaN, NaN],
+      label1: columnLabels[0],
+      label2: columnLabels[1],
+    };
+  }
+  const meanDiff = jStat.mean(diffs);
+  const sd = jStat.stdev(diffs, true);
+  const sem = sd / Math.sqrt(n);
+  const df = n - 1;
+  const t = sem > 0 ? meanDiff / sem : 0;
+  const p = 2 * (1 - jStat.studentt.cdf(Math.abs(t), df));
+  const tCrit = jStat.studentt.inv(0.975, df);
+  const ci: [number, number] = [
+    meanDiff - tCrit * sem,
+    meanDiff + tCrit * sem,
+  ];
+  return {
+    type: 'paired_ttest',
+    t,
+    p,
+    df,
+    meanDiff,
+    ci,
+    label1: columnLabels[0],
+    label2: columnLabels[1],
+  };
+}

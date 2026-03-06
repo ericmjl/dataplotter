@@ -1,4 +1,11 @@
-import type { Project, ColumnTableData, XYTableData } from '../../types';
+/**
+ * Build .pzfx (Prism XML) from a Project for round-trip export.
+ * @spec PRISM-WKF-011
+ * Exports tables only (column and XY); analyses and graphs are not serialized to PZFX.
+ * Lossy: re-import yields tables only; analyses/graphs must be recreated.
+ */
+
+import type { Project, DataTable, ColumnTableData, XYTableData } from '../../types';
 
 function escapeXml(s: string): string {
   return s
@@ -9,50 +16,64 @@ function escapeXml(s: string): string {
     .replace(/'/g, '&apos;');
 }
 
-function emitD(value: number | null): string {
-  if (value == null || Number.isNaN(value)) return '';
-  return String(value);
+function columnTableToXml(table: DataTable): string {
+  const data = table.data as ColumnTableData;
+  const { columnLabels, rows } = data;
+  const nCols = columnLabels.length;
+  const nRows = rows.length;
+  const parts: string[] = [
+    `<Table TableType="OneWay">`,
+    `<Title>${escapeXml(table.name)}</Title>`,
+  ];
+  for (let c = 0; c < nCols; c++) {
+    parts.push(`<YColumn>`, `<Title>${escapeXml(columnLabels[c] ?? '')}</Title>`, `<Subcolumn>`);
+    for (let r = 0; r < nRows; r++) {
+      const v = rows[r]?.[c];
+      const excluded = v == null || Number.isNaN(v) ? ' Excluded="1"' : '';
+      parts.push(`<d${excluded}>${v != null && Number.isFinite(v) ? String(v) : ''}</d>`);
+    }
+    parts.push(`</Subcolumn>`, `</YColumn>`);
+  }
+  parts.push(`</Table>`);
+  return parts.join('');
 }
 
-export function buildPzfxDataOnly(project: Project): string {
-  const sb: string[] = [];
-  sb.push('<?xml version="1.0" encoding="UTF-8"?>');
-  sb.push('<GraphPadPrismFile PrismXMLVersion="5.00">');
-  sb.push('<TableSequence />');
-  project.tables.forEach((table, idx) => {
-    sb.push(`<Table ID="${idx + 1}" TableType="${table.format === 'xy' ? 'XY' : 'OneWay'}" XFormat="numbers" YFormat="replicates">`);
-    sb.push(`<Title>${escapeXml(table.name)}</Title>`);
-    if (table.format === 'column' && 'columnLabels' in table.data) {
-      const d = table.data as ColumnTableData;
-      d.columnLabels.forEach((label, c) => {
-        sb.push('<YColumn>');
-        sb.push(`<Title>${escapeXml(label)}</Title>`);
-        sb.push('<Subcolumn>');
-        d.rows.forEach((row) => {
-          sb.push(`<d>${emitD(row[c] ?? null)}</d>`);
-        });
-        sb.push('</Subcolumn>');
-        sb.push('</YColumn>');
-      });
-    } else if (table.format === 'xy' && 'x' in table.data) {
-      const d = table.data as XYTableData;
-      sb.push('<XColumn>');
-      sb.push(`<Title>${escapeXml(d.xLabel)}</Title>`);
-      sb.push('<Subcolumn>');
-      d.x.forEach((v) => sb.push(`<d>${emitD(v)}</d>`));
-      sb.push('</Subcolumn>');
-      sb.push('</XColumn>');
-      d.yLabels.forEach((label, yi) => {
-        sb.push('<YColumn>');
-        sb.push(`<Title>${escapeXml(label)}</Title>`);
-        sb.push('<Subcolumn>');
-        (d.ys[yi] ?? []).forEach((v) => sb.push(`<d>${emitD(v)}</d>`));
-        sb.push('</Subcolumn>');
-        sb.push('</YColumn>');
-      });
+function xyTableToXml(table: DataTable): string {
+  const data = table.data as XYTableData;
+  const { xLabel, yLabels, x, ys } = data;
+  const n = x.length;
+  const parts: string[] = [
+    `<Table TableType="XY">`,
+    `<Title>${escapeXml(table.name)}</Title>`,
+    `<XColumn>`,
+    `<Title>${escapeXml(xLabel)}</Title>`,
+    `<Subcolumn>`,
+  ];
+  for (let r = 0; r < n; r++) {
+    const v = x[r];
+    const excluded = v == null || Number.isNaN(v) ? ' Excluded="1"' : '';
+    parts.push(`<d${excluded}>${v != null && Number.isFinite(v) ? String(v) : ''}</d>`);
+  }
+  parts.push(`</Subcolumn>`, `</XColumn>`);
+  for (let c = 0; c < yLabels.length; c++) {
+    const col = ys[c] ?? [];
+    parts.push(`<YColumn>`, `<Title>${escapeXml(yLabels[c] ?? '')}</Title>`, `<Subcolumn>`);
+    for (let r = 0; r < n; r++) {
+      const v = col[r] ?? null;
+      const excluded = v == null || Number.isNaN(v) ? ' Excluded="1"' : '';
+      parts.push(`<d${excluded}>${v != null && Number.isFinite(v) ? String(v) : ''}</d>`);
     }
-    sb.push('</Table>');
-  });
-  sb.push('</GraphPadPrismFile>');
-  return sb.join('\n');
+    parts.push(`</Subcolumn>`, `</YColumn>`);
+  }
+  parts.push(`</Table>`);
+  return parts.join('');
+}
+
+export function buildPzfx(project: Project): string {
+  const xmlDecl = '<?xml version="1.0" encoding="UTF-8"?>';
+  const tablesXml = project.tables
+    .filter((t) => t.format === 'column' || t.format === 'xy')
+    .map((t) => (t.format === 'column' ? columnTableToXml(t) : xyTableToXml(t)))
+    .join('\n');
+  return `${xmlDecl}\n<GraphPadPrismFile xmlns="http://graphpad.com/prism/xml/">\n${tablesXml}\n</GraphPadPrismFile>`;
 }

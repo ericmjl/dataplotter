@@ -107,6 +107,7 @@ export function parsePzfx(buffer: ArrayBuffer): Result<Project> {
       tables,
       analyses: [],
       graphs: [],
+      layouts: [],
       selection: null,
     },
   };

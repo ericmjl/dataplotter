@@ -133,6 +133,7 @@ export async function parsePrism(blob: Blob): Promise<Result<Project>> {
     tables,
     analyses,
     graphs,
+    layouts: [],
     selection: null,
   };
   const validated = ProjectSchema.safeParse(migrateProject(project));

@@ -2,9 +2,14 @@ import type {
   GraphTypeId,
   ColumnTableData,
   XYTableData,
+  GroupedTableData,
+  ContingencyTableData,
+  SurvivalTableData,
+  PartsOfWholeTableData,
   AnalysisResult,
   GraphOptions,
 } from '../types';
+import { runKaplanMeier } from '../engine/statistics/kaplanMeier';
 
 export type PlotlyTrace = {
   x: (string | number)[];
@@ -19,6 +24,16 @@ export type PlotlyTrace = {
     visible: boolean;
   };
   marker?: { size?: number; opacity?: number; color?: string };
+  line?: { shape?: 'hv' };
+  /** Plot on right Y-axis when 'y2'. */
+  yaxis?: 'y' | 'y2';
+};
+
+export type PlotlyPieTrace = {
+  type: 'pie';
+  labels: string[];
+  values: number[];
+  name?: string;
 };
 
 /** When present, merge into layout (e.g. bar chart x-axis tick labels). */
@@ -66,19 +81,94 @@ function jitter(step: number): number {
 }
 
 export type BuildPlotlyResult = {
-  traces: PlotlyTrace[];
+  traces: (PlotlyTrace | PlotlyPieTrace)[];
   layout?: BarChartLayout;
 };
 
+function cellMean(cell: (number | null)[]): number {
+  const vals = cell.filter((v): v is number => v != null && Number.isFinite(v));
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+}
+
 export function buildPlotlySpec(
   graphType: GraphTypeId,
-  tableData: ColumnTableData | XYTableData,
+  tableData:
+    | ColumnTableData
+    | XYTableData
+    | GroupedTableData
+    | ContingencyTableData
+    | SurvivalTableData
+    | PartsOfWholeTableData,
   analysisResult: AnalysisResult | undefined,
   graphOptions: GraphOptions
 ): BuildPlotlyResult {
   const errorBarType = graphOptions.errorBarType ?? 'sem';
 
-  if (graphType === 'bar' && 'columnLabels' in tableData) {
+  if ('counts' in tableData) {
+    return { traces: [] };
+  }
+
+  if ('times' in tableData) {
+    if (graphType === 'survival') {
+      const survData = tableData as SurvivalTableData;
+      const kmResult =
+        analysisResult?.type === 'kaplan_meier'
+          ? analysisResult
+          : runKaplanMeier(survData);
+      if (kmResult.type !== 'kaplan_meier') return { traces: [] };
+      const traces: PlotlyTrace[] = kmResult.curves.map((c) => ({
+        x: c.time,
+        y: c.survival,
+        type: 'scatter',
+        mode: 'lines',
+        name: c.group,
+        line: { shape: 'hv' },
+      }));
+      return { traces };
+    }
+    return { traces: [] };
+  }
+
+  if ('labels' in tableData && 'values' in tableData) {
+    if (graphType === 'pie') {
+      const pieData = tableData as PartsOfWholeTableData;
+      let labels: string[];
+      let values: number[];
+      if (analysisResult?.type === 'fraction_of_total') {
+        labels = analysisResult.fractions.map((f) => f.label);
+        values = analysisResult.fractions.map((f) => f.fraction);
+      } else {
+        labels = pieData.labels;
+        values = pieData.values;
+      }
+      const trace: PlotlyPieTrace = { type: 'pie', labels, values };
+      return { traces: [trace] };
+    }
+    return { traces: [] };
+  }
+
+  if (graphType === 'groupedBar' && 'cellValues' in tableData) {
+    const { rowGroupLabels, colGroupLabels, cellValues } = tableData;
+    const xNumeric = colGroupLabels.map((_, j) => j);
+    const traces: PlotlyTrace[] = rowGroupLabels.map((rowLabel, i) => ({
+      type: 'bar',
+      x: xNumeric,
+      y: colGroupLabels.map((_, j) => cellMean(cellValues[i]?.[j] ?? [])),
+      name: rowLabel,
+    }));
+    return {
+      traces,
+      layout: {
+        xaxis: {
+          type: 'linear',
+          tickvals: xNumeric,
+          ticktext: colGroupLabels,
+        },
+      },
+    };
+  }
+
+  if (graphType === 'bar' && 'columnLabels' in tableData && !('cellValues' in tableData)) {
     const { columnLabels: labels, rows, groupLabels, groupForColumn } = tableData;
     const hasGroups =
       groupLabels?.length && groupForColumn?.length === labels.length;
@@ -227,17 +317,20 @@ export function buildPlotlySpec(
     const traces: PlotlyTrace[] = [];
     const xRaw = tableData.x;
     const x = xRaw.map((v) => (v != null && Number.isFinite(v) ? v : 0));
+    const y2Index = graphOptions.yAxis2SeriesIndex;
     for (let s = 0; s < tableData.ys.length; s++) {
       const y = (tableData.ys[s] ?? []).map((v) => (v != null && Number.isFinite(v) ? v : 0));
       const mode =
         graphType === 'scatter' ? 'markers' : graphType === 'line' ? 'lines' : 'lines+markers';
-      traces.push({
+      const trace: PlotlyTrace = {
         x,
         y,
         type: 'scatter',
         mode,
         name: tableData.yLabels[s],
-      });
+      };
+      if (y2Index === s) trace.yaxis = 'y2';
+      traces.push(trace);
     }
     if (analysisResult?.type === 'linear_regression') {
       const { slope, intercept } = analysisResult;
@@ -251,6 +344,20 @@ export function buildPlotlySpec(
         type: 'scatter',
         mode: 'lines',
         name: 'Fit',
+      });
+    }
+    if (graphOptions.showLineOfIdentity && x.length > 0) {
+      const xMin = Math.min(...x);
+      const xMax = Math.max(...x);
+      const span = xMax - xMin || 1;
+      const lo = xMin - span * 0.05;
+      const hi = xMax + span * 0.05;
+      traces.push({
+        x: [lo, hi],
+        y: [lo, hi],
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Line of identity (X=Y)',
       });
     }
     return { traces };

@@ -1,8 +1,15 @@
 import { useState } from 'react';
-import type { ColumnTableData, XYTableData } from '../types';
+import type {
+  ColumnTableData,
+  XYTableData,
+  GroupedTableData,
+  ContingencyTableData,
+  SurvivalTableData,
+  PartsOfWholeTableData,
+} from '../types';
 import { useStore } from '../store';
 
-type DialogFormat = 'column' | 'grouped' | 'xy';
+type DialogFormat = 'column' | 'grouped' | 'xy' | 'contingency' | 'survival' | 'partsOfWhole';
 
 interface NewTableDialogProps {
   open: boolean;
@@ -22,6 +29,11 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
     { name: 'Control', replicates: 3 },
     { name: 'Treated', replicates: 3 },
   ]);
+  const [contingencyRowLabels, setContingencyRowLabels] = useState('Yes, No');
+  const [contingencyColLabels, setContingencyColLabels] = useState('A, B');
+  const [survivalTimeLabel, setSurvivalTimeLabel] = useState('Time');
+  const [survivalEventLabel, setSurvivalEventLabel] = useState('Event');
+  const [partsLabelsStr, setPartsLabelsStr] = useState('A, B, C');
 
   if (!open) return null;
 
@@ -38,22 +50,44 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
     } else if (format === 'grouped') {
       const groups = groupedRows.filter((g) => g.name.trim() && g.replicates >= 1);
       if (groups.length === 0) return;
-      const groupLabels = groups.map((g) => g.name.trim());
-      const columnLabels: string[] = [];
-      const groupForColumn: number[] = [];
-      groups.forEach((g, gi) => {
-        for (let r = 0; r < g.replicates; r++) {
-          columnLabels.push(`${g.name.trim()}_${r + 1}`);
-          groupForColumn.push(gi);
-        }
-      });
-      const data: ColumnTableData = {
-        columnLabels,
-        rows: [],
-        groupLabels,
-        groupForColumn,
+      const rowGroupLabels = groups.map((g) => g.name.trim());
+      const colGroupLabels = ['Col1', 'Col2'];
+      const a = rowGroupLabels.length;
+      const b = colGroupLabels.length;
+      const cellValues: (number | null)[][][] = Array.from({ length: a }, () =>
+        Array.from({ length: b }, () => Array(2).fill(null))
+      );
+      const data: GroupedTableData = {
+        rowGroupLabels,
+        colGroupLabels,
+        cellValues,
       };
-      addTable({ name: name || 'Grouped table', format: 'column', data });
+      addTable({ name: name || 'Grouped table', format: 'grouped', data });
+    } else if (format === 'contingency') {
+      const rowLabels = contingencyRowLabels.split(',').map((s) => s.trim()).filter(Boolean);
+      const colLabels = contingencyColLabels.split(',').map((s) => s.trim()).filter(Boolean);
+      if (rowLabels.length === 0 || colLabels.length === 0) return;
+      const counts = Array.from({ length: rowLabels.length }, () =>
+        Array.from({ length: colLabels.length }, () => 0)
+      );
+      const data: ContingencyTableData = { rowLabels, columnLabels: colLabels, counts };
+      addTable({ name: name || 'Contingency table', format: 'contingency', data });
+    } else if (format === 'survival') {
+      const data: SurvivalTableData = {
+        timeLabel: survivalTimeLabel || 'Time',
+        eventLabel: survivalEventLabel || 'Event',
+        times: [],
+        events: [],
+      };
+      addTable({ name: name || 'Survival table', format: 'survival', data });
+    } else if (format === 'partsOfWhole') {
+      const labels = partsLabelsStr.split(',').map((s) => s.trim()).filter(Boolean);
+      if (labels.length === 0) return;
+      const data: PartsOfWholeTableData = {
+        labels,
+        values: labels.map(() => 0),
+      };
+      addTable({ name: name || 'Parts of whole', format: 'partsOfWhole', data });
     } else {
       const yLabels = yLabelsStr.split(',').map((s) => s.trim()).filter(Boolean);
       if (yLabels.length === 0) return;
@@ -70,6 +104,8 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
     setXLabel('X');
     setYLabelsStr('Y');
     setGroupedRows([{ name: 'Control', replicates: 3 }, { name: 'Treated', replicates: 3 }]);
+    setContingencyRowLabels('Yes, No');
+    setContingencyColLabels('A, B');
     onClose();
   }
 
@@ -98,6 +134,9 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
             >
               <option value="column">Column (simple)</option>
               <option value="grouped">Grouped (replicates as columns)</option>
+              <option value="contingency">Contingency (counts)</option>
+              <option value="survival">Survival</option>
+              <option value="partsOfWhole">Parts of whole</option>
               <option value="xy">XY</option>
             </select>
           </div>
@@ -183,6 +222,56 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
               >
                 + Add group
               </button>
+            </div>
+          )}
+          {format === 'contingency' && (
+            <>
+              <div className="dialog-field">
+                <label htmlFor="contingencyRows" className="dialog-label">
+                  Row labels (comma-separated)
+                </label>
+                <input
+                  id="contingencyRows"
+                  type="text"
+                  className="dialog-input"
+                  value={contingencyRowLabels}
+                  onChange={(e) => setContingencyRowLabels(e.target.value)}
+                  placeholder="Yes, No"
+                  aria-label="Row labels"
+                />
+              </div>
+              <div className="dialog-field">
+                <label htmlFor="contingencyCols" className="dialog-label">
+                  Column labels (comma-separated)
+                </label>
+                <input
+                  id="contingencyCols"
+                  type="text"
+                  className="dialog-input"
+                  value={contingencyColLabels}
+                  onChange={(e) => setContingencyColLabels(e.target.value)}
+                  placeholder="A, B"
+                  aria-label="Column labels"
+                />
+              </div>
+            </>
+          )}
+          {format === 'survival' && (
+            <>
+              <div className="dialog-field">
+                <label htmlFor="survivalTimeLabel" className="dialog-label">Time column label</label>
+                <input id="survivalTimeLabel" type="text" className="dialog-input" value={survivalTimeLabel} onChange={(e) => setSurvivalTimeLabel(e.target.value)} />
+              </div>
+              <div className="dialog-field">
+                <label htmlFor="survivalEventLabel" className="dialog-label">Event column label</label>
+                <input id="survivalEventLabel" type="text" className="dialog-input" value={survivalEventLabel} onChange={(e) => setSurvivalEventLabel(e.target.value)} />
+              </div>
+            </>
+          )}
+          {format === 'partsOfWhole' && (
+            <div className="dialog-field">
+              <label htmlFor="partsLabels" className="dialog-label">Labels (comma-separated)</label>
+              <input id="partsLabels" type="text" className="dialog-input" value={partsLabelsStr} onChange={(e) => setPartsLabelsStr(e.target.value)} placeholder="A, B, C" />
             </div>
           )}
           {format === 'xy' && (

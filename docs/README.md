@@ -17,4 +17,7 @@ This documentation follows the [Diataxis](https://diataxis.fr/) framework. Use t
 - **[Project layout](reference/project-layout.md)** — Where code and docs live.
 - **[Environment variables](reference/environment-variables.md)** — All `VITE_*` and env usage.
 - **[Architecture](reference/architecture.md)** — App shell, state, data flow.
+- **[Prism file formats](reference/prism-file-formats.md)** — What we import/export for .pzfx and .prism; data-only vs full fidelity.
 - **[AGENTS.md](../AGENTS.md)** — Rules and conventions for coding agents (and humans).
+- **[High-level design](high-level-design.md)** — Prism clone vision and architecture (HLD → LLDs → EARS).
+- **[Specs](specs/prism-clone-specs.md)** — EARS requirements for the Prism clone (traceable to LLDs).

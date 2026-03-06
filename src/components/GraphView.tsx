@@ -36,6 +36,7 @@ export function GraphView() {
       </div>
     );
   }
+  const graphId = graph.id;
 
   const table = project.tables.find((t) => t.id === graph.tableId);
   const analysis = graph.analysisId
@@ -53,7 +54,8 @@ export function GraphView() {
   const data = spec.traces;
   const barLayout = spec.layout;
 
-  const isBarChart = graph.graphType === 'bar';
+  const isBarChart = graph.graphType === 'bar' || graph.graphType === 'groupedBar';
+  const hasSecondY = graph.options.yAxis2SeriesIndex != null;
   const layout: Record<string, unknown> = {
     title: graph.options.title ?? graph.name,
     xaxis: barLayout?.xaxis
@@ -66,8 +68,16 @@ export function GraphView() {
       title: graph.options.yAxisLabel,
       type: graph.options.yAxisScale ?? 'linear',
     },
+    ...(hasSecondY && {
+      yaxis2: {
+        title: 'Right Y',
+        type: graph.options.yAxisScale ?? 'linear',
+        overlaying: 'y',
+        side: 'right',
+      },
+    }),
     showlegend: graph.options.showLegend ?? true,
-    margin: { t: 50, r: 50, b: 50, l: 50 },
+    margin: { t: 50, r: hasSecondY ? 80 : 50, b: 50, l: 50 },
     hovermode: 'closest',
     annotations: graph.options.annotations ?? [],
   };
@@ -83,6 +93,10 @@ export function GraphView() {
 
   const graphName = graph.name;
   const annotations = graph.options.annotations ?? [];
+  const isXY =
+    graph.graphType === 'scatter' ||
+    graph.graphType === 'line' ||
+    graph.graphType === 'scatterLine';
 
   function handleAddAnnotation() {
     const next: ChartAnnotation = {
@@ -92,13 +106,13 @@ export function GraphView() {
       xref: 'paper',
       yref: 'paper',
     };
-    updateGraphOptions(graph.id, {
+    updateGraphOptions(graphId, {
       annotations: [...annotations, next],
     });
   }
 
   function handleRemoveAnnotation(index: number) {
-    updateGraphOptions(graph.id, {
+    updateGraphOptions(graphId, {
       annotations: annotations.filter((_, i) => i !== index),
     });
   }
@@ -131,6 +145,40 @@ export function GraphView() {
     <div className="main-area" role="region" aria-label="Graph view">
       <h2 style={{ marginTop: 0 }}>{graph.name}</h2>
       <div className="toolbar">
+        {isXY && (
+          <>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={graph.options.showLineOfIdentity ?? false}
+                onChange={(e) =>
+                  updateGraphOptions(graphId, { showLineOfIdentity: e.target.checked })
+                }
+                aria-label="Show line of identity (X=Y)"
+              />
+              Line of identity
+            </label>
+            {table && 'ys' in table.data && table.data.ys.length > 0 && (
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                Right Y-axis:
+                <select
+                  value={graph.options.yAxis2SeriesIndex ?? ''}
+                  onChange={(e) =>
+                    updateGraphOptions(graphId, {
+                      yAxis2SeriesIndex: e.target.value === '' ? undefined : Number(e.target.value),
+                    })
+                  }
+                  aria-label="Series on right Y-axis"
+                >
+                  <option value="">None</option>
+                  {table.data.yLabels.map((label, i) => (
+                    <option key={i} value={i}>{label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </>
+        )}
         <button type="button" onClick={handleAddAnnotation} aria-label="Add annotation">
           Add annotation
         </button>

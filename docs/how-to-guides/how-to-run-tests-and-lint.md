@@ -5,8 +5,14 @@
 ## Commands
 
 ```bash
-# Run all tests (Vitest)
+# Run all unit tests (Vitest)
 npm test
+
+# Run E2E tests (Cypress; start dev server first: npm run dev)
+npm run test:e2e
+
+# Open Cypress interactive runner
+npm run test:e2e:open
 
 # Lint (ESLint)
 npm run lint
@@ -18,6 +24,8 @@ npm run build
 ## What each does
 
 - **`npm test`** — Runs Vitest in `run` mode. Test files live next to source (e.g. `*.test.ts`) or under test directories. Uses `jsdom` for React/DOM.
+- **`npm run test:e2e`** — Runs Cypress E2E tests headlessly. Start the app with `npm run dev` in another terminal first (default `http://localhost:5173`). Config: `cypress.config.ts`; specs: `cypress/e2e/**/*.cy.ts`.
+- **`npm run test:e2e:open`** — Opens the Cypress interactive runner to run or debug E2E specs.
 - **`npm run lint`** — Runs ESLint on the project (config in `eslint.config.js`).
 - **`npm run build`** — Runs `tsc -b` then `vite build`. Fails on type errors or build errors.
 

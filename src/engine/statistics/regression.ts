@@ -32,14 +32,14 @@ export function runLinearRegression(
   const yArr = pairs.map((p) => p.y);
   const jMatX = jStat.builddxmatrix(xArr.map((xi) => [xi]));
   const jMatY = jStat.buildymatrix(yArr);
-  const beta = jStat.regress(jMatX, jMatY);
+  const beta = jStat.regress(jMatX, jMatY) as number[];
   const compile = jStat.regresst(jMatX, jMatY, 2);
-  const slope = beta[1];
-  const intercept = beta[0];
-  const r2 = compile.anova.r2;
+  const slope = Number(beta[1]);
+  const intercept = Number(beta[0]);
+  const r2 = Number(compile.anova.r2);
   const slopeStats = compile.stats?.[1];
-  const p = slopeStats ? slopeStats[3] : 1;
-  const slopeSE = slopeStats ? Math.abs((slopeStats[1] as number) ?? 0) : 0;
+  const p = slopeStats != null ? Number(slopeStats[3]) : 1;
+  const slopeSE = slopeStats != null ? Math.abs(Number(slopeStats[1]) ?? 0) : 0;
   const df = pairs.length - 2;
   const tCrit = df > 0 ? jStat.studentt.inv(0.975, df) : 0;
   const slopeCI: [number, number] = [

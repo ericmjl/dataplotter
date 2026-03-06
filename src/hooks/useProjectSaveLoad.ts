@@ -3,6 +3,7 @@ import { exportProject } from '../lib/exportProject';
 import { importProject } from '../lib/importProject';
 import { parsePrism } from '../io/prism/parsePrism';
 import { parsePzfx } from '../io/pzfx/parsePzfx';
+import { buildPzfx } from '../io/pzfx/buildPzfx';
 import type { Project } from '../types';
 
 const LOCAL_STORAGE_KEY = 'dataplotter-project';
@@ -20,6 +21,17 @@ export function useProjectSaveLoad(
     const a = document.createElement('a');
     a.href = url;
     a.download = 'project.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [getProject]);
+
+  const saveAsPrism = useCallback(() => {
+    const pzfx = buildPzfx(getProject());
+    const blob = new Blob([pzfx], { type: 'application/xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'project.pzfx';
     a.click();
     URL.revokeObjectURL(url);
   }, [getProject]);
@@ -104,6 +116,7 @@ export function useProjectSaveLoad(
         const result = parsePzfx(reader.result as ArrayBuffer);
         if (result.ok) {
           setProject(result.value);
+          alert('Only table data was imported. Analyses and graphs from the Prism file were not loaded—you can re-run analyses and create graphs here.');
         } else {
           alert(result.error);
         }
@@ -116,6 +129,7 @@ export function useProjectSaveLoad(
 
   return {
     saveToFile,
+    saveAsPrism,
     loadFromFile,
     fileInputRef,
     handleFileChange,

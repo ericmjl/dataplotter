@@ -17,6 +17,12 @@ declare module 'jstat' {
       cdf(x: number, df: number): number;
       inv(p: number, df: number): number;
     };
+    chisquare: {
+      cdf(x: number, df: number): number;
+    };
+    normal: {
+      cdf(x: number, mean?: number, std?: number): number;
+    };
   };
   export default jStat;
 }

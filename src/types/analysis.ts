@@ -9,6 +9,9 @@ export interface Analysis {
   error?: string;
 }
 
+/** Bayesian posterior summary: 95% credible interval for the mean. */
+export type CrI95 = [number, number];
+
 export type AnalysisResult =
   | {
       type: 'descriptive';
@@ -21,6 +24,10 @@ export type AnalysisResult =
         median: number;
         q1: number;
         q3: number;
+        /** 95% credible interval for the mean (Bayesian). */
+        meanCrI?: CrI95;
+        /** Posterior SD of the mean (Bayesian). */
+        meanSD?: number;
       }[];
     }
   | {
@@ -30,7 +37,25 @@ export type AnalysisResult =
       df: number;
       mean1: number;
       mean2: number;
+      /** Difference-of-means 95% CI (frequentist) or credible interval (Bayesian). */
       ci: [number, number];
+      /** 95% credible interval for mean difference (Bayesian). */
+      meanDiffCrI?: CrI95;
+      /** P(μ1 > μ2) from posterior (Bayesian). */
+      pDiffPositive?: number;
+      label1: string;
+      label2: string;
+    }
+  | {
+      /** @spec PRISM-ANA-006 */
+      type: 'paired_ttest';
+      t: number;
+      p: number;
+      df: number;
+      meanDiff: number;
+      ci: [number, number];
+      meanDiffCrI?: CrI95;
+      pDiffPositive?: number;
       label1: string;
       label2: string;
     }
@@ -41,6 +66,83 @@ export type AnalysisResult =
       dfBetween: number;
       dfWithin: number;
       groupMeans: { label: string; mean: number }[];
+    }
+  | {
+      /** @spec PRISM-ANA-007 */
+      type: 'two_way_anova';
+      factorARows: string[];
+      factorBCols: string[];
+      fA: number;
+      pA: number;
+      fB: number;
+      pB: number;
+      fAB: number;
+      pAB: number;
+      dfA: number;
+      dfB: number;
+      dfAB: number;
+      dfWithin: number;
+      cellMeans: { rowLabel: string; colLabel: string; mean: number }[];
+    }
+  | {
+      /** @spec PRISM-ANA-008 */
+      type: 'chi_square';
+      chi2: number;
+      p: number;
+      df: number;
+    }
+  | {
+      /** @spec PRISM-ANA-009 */
+      type: 'fisher_exact';
+      p: number;
+      oddsRatio?: number;
+    }
+  | {
+      /** @spec PRISM-ANA-010 */
+      type: 'kaplan_meier';
+      curves: { group: string; time: number[]; survival: number[] }[];
+      medianSurvival?: { group: string; median: number }[];
+    }
+  | {
+      /** @spec PRISM-ANA-011 */
+      type: 'fraction_of_total';
+      fractions: { label: string; value: number; fraction: number }[];
+    }
+  | {
+      /** @spec PRISM-ANA-013 */
+      type: 'mann_whitney';
+      u: number;
+      p: number;
+      label1: string;
+      label2: string;
+      median1: number;
+      median2: number;
+    }
+  | {
+      /** @spec PRISM-ANA-013 */
+      type: 'kruskal_wallis';
+      h: number;
+      p: number;
+      df: number;
+      groupMedians: { label: string; median: number }[];
+    }
+  | {
+      /** @spec PRISM-ANA-014 */
+      type: 'roc_auc';
+      auc: number;
+      n: number;
+      labelScore: string;
+      labelOutcome: string;
+    }
+  | {
+      /** Normality test (e.g. D'Agostino–Pearson); used to choose parametric vs nonparametric. */
+      type: 'normality_test';
+      passed: boolean;
+      p: number;
+      statistic: number;
+      skewness: number;
+      kurtosis: number;
+      label: string;
     }
   | {
       type: 'linear_regression';
@@ -79,6 +181,46 @@ export interface OneWayAnovaOptions {
   columnLabels?: string[];
 }
 
+export interface TwoWayAnovaOptions {
+  type: 'two_way_anova';
+}
+
+export interface ChiSquareOptions {
+  type: 'chi_square';
+}
+
+export interface FisherExactOptions {
+  type: 'fisher_exact';
+}
+
+export interface KaplanMeierOptions {
+  type: 'kaplan_meier';
+}
+
+export interface FractionOfTotalOptions {
+  type: 'fraction_of_total';
+}
+
+export interface MannWhitneyOptions {
+  type: 'mann_whitney';
+  columnLabels: [string, string];
+}
+
+export interface KruskalWallisOptions {
+  type: 'kruskal_wallis';
+  columnLabels?: string[];
+}
+
+export interface RocAucOptions {
+  type: 'roc_auc';
+  columnLabels: [string, string];
+}
+
+export interface NormalityTestOptions {
+  type: 'normality_test';
+  columnLabel?: string;
+}
+
 export interface LinearRegressionOptions {
   type: 'linear_regression';
   ySeriesLabel?: string;
@@ -95,5 +237,14 @@ export type AnalysisOptions =
   | UnpairedTtestOptions
   | PairedTtestOptions
   | OneWayAnovaOptions
+  | TwoWayAnovaOptions
+  | ChiSquareOptions
+  | FisherExactOptions
+  | KaplanMeierOptions
+  | FractionOfTotalOptions
+  | MannWhitneyOptions
+  | KruskalWallisOptions
+  | RocAucOptions
+  | NormalityTestOptions
   | LinearRegressionOptions
   | DoseResponse4plOptions;

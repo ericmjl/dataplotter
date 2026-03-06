@@ -12,6 +12,8 @@ This file gives **rules and conventions** for AI coding agents and human develop
 2. **Run the app.**  
    - [docs/tutorials/getting-started.md](docs/tutorials/getting-started.md): `npm install`, optional `.env.local`, `npm run dev`.
 
+3. **Before implementation:** When the user describes problems, new features, or bug fixes, **always update HLD, LLD, and EARS** (as applicable) and **study the codebase thoroughly** before writing implementation code. Keep design and specs in sync with behavior.
+
 ## Conventions
 
 ### Code

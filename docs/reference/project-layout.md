@@ -10,6 +10,8 @@
 | `vite.config.ts` | Vite config: React plugin, node polyfills, `global` define for Plotly. |
 | `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` | TypeScript config. |
 | `eslint.config.js` | ESLint config. |
+| `cypress.config.ts` | Cypress E2E config (baseUrl, spec pattern). |
+| `cypress/e2e/` | E2E specs (`*.cy.ts`). |
 | `index.html` | Single HTML entry; script loads `src/main.tsx`. |
 | `.env.example` | Example env vars; copy to `.env.local` (gitignored). |
 | `docs/` | Documentation (Diataxis). |

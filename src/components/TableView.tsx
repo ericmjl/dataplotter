@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { useStore } from '../store';
 import { getSchema, validateTableData, getAllowedAnalyses, getAllowedGraphTypes, getDefaultOptions } from '../lib/tableRegistry';
 import { DataGrid } from './DataGrid';
-import type { AnalysisTypeId, GraphTypeId, ColumnTableData, XYTableData } from '../types';
+import { GroupedDataGrid } from './GroupedDataGrid';
+import { ContingencyDataGrid } from './ContingencyDataGrid';
+import { SurvivalDataGrid } from './SurvivalDataGrid';
+import { PartsOfWholeDataGrid } from './PartsOfWholeDataGrid';
+import type { AnalysisTypeId, GraphTypeId, ColumnTableData, XYTableData, GroupedTableData, ContingencyTableData, SurvivalTableData, PartsOfWholeTableData } from '../types';
 
 type ViewMode = 'wide' | 'tidy';
 
@@ -89,11 +93,16 @@ function TidyTable({
 export function TableView() {
   const project = useStore((s) => s.project);
   const updateTableData = useStore((s) => s.updateTableData);
+  const renameTable = useStore((s) => s.renameTable);
   const addAnalysis = useStore((s) => s.addAnalysis);
   const addGraph = useStore((s) => s.addGraph);
+  const copyAnalysesAndGraphsFromTable = useStore((s) => s.copyAnalysesAndGraphsFromTable);
   const [addAnalysisOpen, setAddAnalysisOpen] = useState(false);
   const [addGraphOpen, setAddGraphOpen] = useState(false);
+  const [copySetupOpen, setCopySetupOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('wide');
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
 
   const selection = project.selection;
 
@@ -147,15 +156,6 @@ export function TableView() {
       const d = tableData as ColumnTableData;
       const { columnLabels, rows, groupLabels, groupForColumn } = d;
       const nCols = columnLabels.length;
-      const lastLetter = (s: string) => {
-        const m = s.match(/([A-Za-z])$/);
-        if (m) {
-          const c = m[1].charCodeAt(0);
-          if (c >= 65 && c <= 90) return String.fromCharCode(c < 90 ? c + 1 : 65);
-          if (c >= 97 && c <= 122) return String.fromCharCode(c < 122 ? c + 1 : 97);
-        }
-        return null;
-      };
       if (groupLabels?.length && groupForColumn?.length === nCols) {
         const g = groupLabels.length - 1;
         const groupName = groupLabels[g] ?? 'Group';
@@ -169,11 +169,9 @@ export function TableView() {
           rows: rows.map((r) => [...r, null]),
         });
       } else {
-        const nextLabel =
-          lastLetter(columnLabels[nCols - 1] ?? '') ?? `Col ${nCols + 1}`;
         updateTableData(tableId, {
           ...d,
-          columnLabels: [...columnLabels, nextLabel],
+          columnLabels: [...columnLabels, 'New column'],
           rows: rows.map((r) => [...r, null]),
         });
       }
@@ -191,6 +189,10 @@ export function TableView() {
   }
 
   const formatForGrid = tableFormat === 'xy' || tableFormat === 'column' ? tableFormat : 'column';
+  const isGrouped = tableFormat === 'grouped' && 'cellValues' in tableData;
+  const isContingency = tableFormat === 'contingency' && 'counts' in tableData;
+  const isSurvival = tableFormat === 'survival' && 'times' in tableData;
+  const isPartsOfWhole = tableFormat === 'partsOfWhole' && 'values' in tableData;
   const allowedAnalyses = getAllowedAnalyses(tableFormat);
   const allowedGraphTypes = getAllowedGraphTypes(tableFormat);
 
@@ -217,9 +219,50 @@ export function TableView() {
     setAddGraphOpen(false);
   }
 
+  function commitRename() {
+    const trimmed = draftTitle.trim();
+    if (trimmed) renameTable(tableId, trimmed);
+    setEditingTitle(false);
+  }
+
   return (
     <div className="main-area" role="region" aria-label="Table view">
-      <h2 style={{ marginTop: 0 }}>{tableName}</h2>
+      <div className="table-view-title-row">
+        {editingTitle ? (
+          <input
+            type="text"
+            className="table-view-title-input"
+            value={draftTitle}
+            onChange={(e) => setDraftTitle(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              if (e.key === 'Escape') {
+                setDraftTitle(tableName);
+                setEditingTitle(false);
+              }
+            }}
+            aria-label="Table name"
+            autoFocus
+          />
+        ) : (
+          <>
+            <h2 style={{ marginTop: 0 }}>{tableName}</h2>
+            <button
+              type="button"
+              className="btn-ghost table-view-rename-btn"
+              onClick={() => {
+                setDraftTitle(tableName);
+                setEditingTitle(true);
+              }}
+              aria-label={`Rename table ${tableName}`}
+              title="Rename table"
+            >
+              ✎
+            </button>
+          </>
+        )}
+      </div>
       <div className="toolbar">
         <div className="view-mode-toggle" role="group" aria-label="Table view format">
           <button
@@ -239,12 +282,16 @@ export function TableView() {
             Tidy
           </button>
         </div>
-        <button type="button" onClick={handleAddRow} aria-label="Add row">
-          Add row
-        </button>
-        <button type="button" onClick={handleAddColumn} aria-label="Add column">
-          Add column
-        </button>
+        {!isGrouped && !isContingency && !isSurvival && !isPartsOfWhole && (
+          <>
+            <button type="button" onClick={handleAddRow} aria-label="Add row">
+              Add row
+            </button>
+            <button type="button" onClick={handleAddColumn} aria-label="Add column">
+              Add column
+            </button>
+          </>
+        )}
         <div style={{ position: 'relative' }}>
           <button
             type="button"
@@ -299,19 +346,77 @@ export function TableView() {
             </ul>
           )}
         </div>
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => { setCopySetupOpen((o) => !o); setAddAnalysisOpen(false); setAddGraphOpen(false); }}
+            aria-label="Copy setup from another table"
+            aria-expanded={copySetupOpen}
+            aria-haspopup="listbox"
+            title="Copy analyses and graphs from another table (no data)"
+          >
+            Copy setup from…
+          </button>
+          {copySetupOpen && table && (
+            <ul role="listbox" className="dropdown-menu">
+              {project.tables.filter((t) => t.id !== table.id).map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    role="option"
+                    className="dropdown-item"
+                    onClick={() => {
+                      copyAnalysesAndGraphsFromTable(t.id, table.id);
+                      setCopySetupOpen(false);
+                    }}
+                  >
+                    {t.name}
+                  </button>
+                </li>
+              ))}
+              {project.tables.filter((t) => t.id !== table.id).length === 0 && (
+                <li><span className="dropdown-item" style={{ cursor: 'default' }}>No other tables</span></li>
+              )}
+            </ul>
+          )}
+        </div>
       </div>
-      {viewMode === 'wide' ? (
+      {isGrouped ? (
+        <GroupedDataGrid
+          data={tableData as GroupedTableData}
+          onDataChange={(d) => handleDataChange(d)}
+          aria-label={`Data for ${tableName}`}
+        />
+      ) : isContingency ? (
+        <ContingencyDataGrid
+          data={tableData as ContingencyTableData}
+          onDataChange={(d) => handleDataChange(d)}
+          aria-label={`Data for ${tableName}`}
+        />
+      ) : isSurvival ? (
+        <SurvivalDataGrid
+          data={tableData as SurvivalTableData}
+          onDataChange={(d) => handleDataChange(d)}
+          aria-label={`Data for ${tableName}`}
+        />
+      ) : isPartsOfWhole ? (
+        <PartsOfWholeDataGrid
+          data={tableData as PartsOfWholeTableData}
+          onDataChange={(d) => handleDataChange(d)}
+          aria-label={`Data for ${tableName}`}
+        />
+      ) : viewMode === 'wide' ? (
         <DataGrid
           schema={schema}
           format={formatForGrid}
-          data={tableData}
-          onDataChange={handleDataChange}
+          data={tableData as ColumnTableData | XYTableData}
+          onDataChange={(d) => handleDataChange(d)}
           aria-label={`Data for ${tableName}`}
         />
       ) : (
         <TidyTable
           format={formatForGrid}
-          data={tableData}
+          data={tableData as ColumnTableData | XYTableData}
           aria-label={`Tidy view of ${tableName}`}
         />
       )}

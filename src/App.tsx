@@ -4,6 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { TableView } from './components/TableView';
 import { AnalysisPanel } from './components/AnalysisPanel';
 import { GraphView } from './components/GraphView';
+import { LayoutView } from './components/LayoutView';
 import { ChatPanel } from './components/ChatPanel';
 import { useProjectSaveLoad } from './hooks/useProjectSaveLoad';
 import './App.css';
@@ -15,6 +16,7 @@ function App() {
   const setProject = useStore((s) => s.setProject);
   const {
     saveToFile,
+    saveAsPrism,
     loadFromFile,
     fileInputRef,
     handleFileChange,
@@ -55,6 +57,8 @@ function App() {
       <AnalysisPanel />
     ) : selection?.type === 'graph' ? (
       <GraphView />
+    ) : selection?.type === 'layout' ? (
+      <LayoutView />
     ) : (
       <TableView />
     );
@@ -72,6 +76,7 @@ function App() {
             <div className="header-group">
               <button type="button" onClick={loadFromFile} aria-label="Open JSON">Open</button>
               <button type="button" onClick={saveToFile} aria-label="Save as JSON">Save</button>
+              <button type="button" onClick={saveAsPrism} aria-label="Save as Prism">Save as Prism</button>
             </div>
             <div className="header-group">
               <button type="button" onClick={loadAsPrism} aria-label="Open .prism file">Open .prism</button>

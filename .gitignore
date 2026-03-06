@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# YouTube transcript script (optional)
+scripts/youtube_prism_transcripts/.venv
+scripts/youtube_prism_transcripts/transcripts
+
+# Prism guide pages (optional context)
+scripts/prism_guide_pages/guide_pages

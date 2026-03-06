@@ -1,6 +1,6 @@
 import type { Project, AnalysisResult, DataTable, Analysis, Graph, GraphOptions, AnalysisTypeId, GraphTypeId } from '../types';
 import { buildContext } from './context';
-import { runAnalysis } from '../engine/statistics';
+import { runAnalysisAsync } from '../engine/statistics';
 import { getAllowedAnalyses, getAllowedGraphTypes } from '../lib/tableRegistry';
 import {
   runAnalysisArgsSchema,
@@ -139,7 +139,6 @@ Reply briefly. Only use tools when the user asks to run an analysis, create a gr
           outcomes.push(`Table ${parsed.data.tableId} not found.`);
           continue;
         }
-        const result = runAnalysis(table.format, parsed.data.analysisType as 'descriptive' | 'unpaired_ttest' | 'one_way_anova' | 'linear_regression' | 'dose_response_4pl', table.data, parsed.data.options);
         actions.addAnalysis({
           tableId: parsed.data.tableId,
           type: parsed.data.analysisType as AnalysisTypeId,
@@ -148,6 +147,12 @@ Reply briefly. Only use tools when the user asks to run an analysis, create a gr
         const newProject = getState();
         const analysisId = newProject.selection?.type === 'analysis' ? newProject.selection.analysisId : null;
         if (analysisId) {
+          const result = await runAnalysisAsync(
+            table.format,
+            parsed.data.analysisType as AnalysisTypeId,
+            table.data,
+            parsed.data.options
+          );
           if (result.ok) {
             actions.updateAnalysisResult(analysisId, result.value);
             outcomes.push(`Ran ${parsed.data.analysisType}.`);

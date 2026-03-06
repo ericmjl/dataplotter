@@ -23,6 +23,10 @@ export interface GraphOptions {
   showLegend?: boolean;
   /** Annotations rendered on the chart and included in exports (PNG/SVG). */
   annotations?: ChartAnnotation[];
+  /** Draw line where X=Y (for XY/scatter/line graphs). */
+  showLineOfIdentity?: boolean;
+  /** Index of Y series to plot on right Y-axis (0-based); only one series supported. PRISM-GPH-010 */
+  yAxis2SeriesIndex?: number;
 }
 
 export interface Graph {

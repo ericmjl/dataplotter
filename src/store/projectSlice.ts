@@ -4,9 +4,14 @@ import type {
   DataTable,
   Analysis,
   Graph,
+  Layout,
   Selection,
   ColumnTableData,
   XYTableData,
+  GroupedTableData,
+  ContingencyTableData,
+  SurvivalTableData,
+  PartsOfWholeTableData,
   AnalysisResult,
 } from '../types';
 import { CURRENT_PROJECT_VERSION } from '../types';
@@ -21,6 +26,7 @@ function emptyProject(): Project {
     tables: [],
     analyses: [],
     graphs: [],
+    layouts: [],
     selection: null,
   };
 }
@@ -33,9 +39,16 @@ export interface ProjectActions {
   setProject: (project: Project) => void;
   addTable: (table: Omit<DataTable, 'id'>) => void;
   removeTable: (tableId: string) => void;
+  renameTable: (tableId: string, name: string) => void;
   updateTableData: (
     tableId: string,
-    data: ColumnTableData | XYTableData
+    data:
+      | ColumnTableData
+      | XYTableData
+      | GroupedTableData
+      | ContingencyTableData
+      | SurvivalTableData
+      | PartsOfWholeTableData
   ) => void;
   addAnalysis: (analysis: Omit<Analysis, 'id'>) => void;
   removeAnalysis: (analysisId: string) => void;
@@ -49,6 +62,12 @@ export interface ProjectActions {
     options: Partial<Graph['options']>
   ) => void;
   setSelection: (selection: Selection) => void;
+  /** @spec PRISM-WKF-005 Copy analysis and graph setup from source table to target (no data). */
+  copyAnalysesAndGraphsFromTable: (sourceTableId: string, targetTableId: string) => void;
+  /** @spec PRISM-WKF-006 */
+  addLayout: (layout: Omit<Layout, 'id'>) => void;
+  removeLayout: (layoutId: string) => void;
+  updateLayout: (layoutId: string, updates: Partial<Pick<Layout, 'name' | 'items'>>) => void;
 }
 
 export function createProjectSlice(
@@ -72,15 +91,35 @@ export function createProjectSlice(
       }));
     },
 
+    renameTable: (tableId: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      set((state) => ({
+        project: {
+          ...state.project,
+          tables: state.project.tables.map((t) =>
+            t.id === tableId ? { ...t, name: trimmed } : t
+          ),
+        },
+      }));
+    },
+
     removeTable: (tableId: string) => {
       set((state) => {
         const tables = state.project.tables.filter((t) => t.id !== tableId);
         const analyses = state.project.analyses.filter(
           (a) => a.tableId !== tableId
         );
+        const graphIdsOnTable = new Set(
+          state.project.graphs.filter((g) => g.tableId === tableId).map((g) => g.id)
+        );
         const graphs = state.project.graphs.filter(
           (g) => g.tableId !== tableId
         );
+        const layouts = state.project.layouts.map((lay) => ({
+          ...lay,
+          items: lay.items.filter((it) => !graphIdsOnTable.has(it.graphId)),
+        }));
         let selection = state.project.selection;
         if (selection?.type === 'table' && selection.tableId === tableId) {
           selection = tables[0] ? { type: 'table', tableId: tables[0].id } : null;
@@ -97,6 +136,7 @@ export function createProjectSlice(
             tables,
             analyses,
             graphs,
+            layouts,
             selection,
           },
         };
@@ -105,7 +145,13 @@ export function createProjectSlice(
 
     updateTableData: (
       tableId: string,
-      data: ColumnTableData | XYTableData
+      data:
+        | ColumnTableData
+        | XYTableData
+        | GroupedTableData
+        | ContingencyTableData
+        | SurvivalTableData
+        | PartsOfWholeTableData
     ) => {
       set((state) => {
         const tables = state.project.tables.map((t) =>
@@ -210,6 +256,10 @@ export function createProjectSlice(
     removeGraph: (graphId: string) => {
       set((state) => {
         const graphs = state.project.graphs.filter((g) => g.id !== graphId);
+        const layouts = state.project.layouts.map((lay) => ({
+          ...lay,
+          items: lay.items.filter((it) => it.graphId !== graphId),
+        }));
         let selection = state.project.selection;
         if (selection?.type === 'graph' && selection.graphId === graphId) {
           selection = null;
@@ -218,6 +268,7 @@ export function createProjectSlice(
           project: {
             ...state.project,
             graphs,
+            layouts,
             selection,
           },
         };
@@ -243,6 +294,75 @@ export function createProjectSlice(
     setSelection: (selection: Selection) => {
       set((state) => ({
         project: { ...state.project, selection },
+      }));
+    },
+
+    copyAnalysesAndGraphsFromTable: (sourceTableId: string, targetTableId: string) => {
+      if (sourceTableId === targetTableId) return;
+      set((state) => {
+        const sourceAnalyses = state.project.analyses.filter((a) => a.tableId === sourceTableId);
+        const sourceGraphs = state.project.graphs.filter((g) => g.tableId === sourceTableId);
+        const newAnalyses = sourceAnalyses.map((a) => ({
+          ...a,
+          id: nanoid(),
+          tableId: targetTableId,
+          result: undefined,
+          error: undefined,
+        }));
+        const oldToNewAnalysisId = new Map<string, string>();
+        sourceAnalyses.forEach((a, i) => oldToNewAnalysisId.set(a.id, newAnalyses[i]!.id));
+        const newGraphs = sourceGraphs.map((g) => ({
+          ...g,
+          id: nanoid(),
+          tableId: targetTableId,
+          analysisId: g.analysisId ? oldToNewAnalysisId.get(g.analysisId) ?? undefined : undefined,
+        }));
+        return {
+          project: {
+            ...state.project,
+            analyses: [...state.project.analyses, ...newAnalyses],
+            graphs: [...state.project.graphs, ...newGraphs],
+          },
+        };
+      });
+    },
+
+    addLayout: (layout: Omit<Layout, 'id'>) => {
+      const id = nanoid();
+      set((state) => ({
+        project: {
+          ...state.project,
+          layouts: [...state.project.layouts, { ...layout, id }],
+          selection: { type: 'layout', layoutId: id },
+        },
+      }));
+    },
+
+    removeLayout: (layoutId: string) => {
+      set((state) => {
+        const layouts = state.project.layouts.filter((l) => l.id !== layoutId);
+        let selection = state.project.selection;
+        if (selection?.type === 'layout' && selection.layoutId === layoutId) {
+          selection = null;
+        }
+        return {
+          project: {
+            ...state.project,
+            layouts,
+            selection,
+          },
+        };
+      });
+    },
+
+    updateLayout: (layoutId: string, updates: Partial<Pick<Layout, 'name' | 'items'>>) => {
+      set((state) => ({
+        project: {
+          ...state.project,
+          layouts: state.project.layouts.map((l) =>
+            l.id === layoutId ? { ...l, ...updates } : l
+          ),
+        },
       }));
     },
   };

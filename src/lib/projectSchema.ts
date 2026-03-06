@@ -16,11 +16,44 @@ const XYTableDataSchema = z.object({
   ys: z.array(z.array(z.union([z.number(), z.null()]))),
 });
 
+const GroupedTableDataSchema = z.object({
+  rowGroupLabels: z.array(z.string()),
+  colGroupLabels: z.array(z.string()),
+  cellValues: z.array(z.array(z.array(z.union([z.number(), z.null()])))),
+});
+
+const ContingencyTableDataSchema = z.object({
+  rowLabels: z.array(z.string()),
+  columnLabels: z.array(z.string()),
+  counts: z.array(z.array(z.number())),
+});
+
+const SurvivalTableDataSchema = z.object({
+  timeLabel: z.string(),
+  eventLabel: z.string(),
+  groupLabel: z.string().optional(),
+  times: z.array(z.number()),
+  events: z.array(z.number()),
+  groups: z.array(z.string()).optional(),
+});
+
+const PartsOfWholeTableDataSchema = z.object({
+  labels: z.array(z.string()),
+  values: z.array(z.number()),
+});
+
 const DataTableSchema = z.object({
   id: z.string(),
   name: z.string(),
   format: z.enum(['xy', 'column', 'grouped', 'contingency', 'survival', 'partsOfWhole', 'multipleVariables', 'nested']),
-  data: z.union([ColumnTableDataSchema, XYTableDataSchema]),
+  data: z.union([
+    ColumnTableDataSchema,
+    XYTableDataSchema,
+    GroupedTableDataSchema,
+    ContingencyTableDataSchema,
+    SurvivalTableDataSchema,
+    PartsOfWholeTableDataSchema,
+  ]),
 });
 
 const DescriptiveResultSchema = z.object({
@@ -51,6 +84,17 @@ const UnpairedTtestResultSchema = z.object({
   label2: z.string(),
 });
 
+const PairedTtestResultSchema = z.object({
+  type: z.literal('paired_ttest'),
+  t: z.number(),
+  p: z.number(),
+  df: z.number(),
+  meanDiff: z.number(),
+  ci: z.tuple([z.number(), z.number()]),
+  label1: z.string(),
+  label2: z.string(),
+});
+
 const OneWayAnovaResultSchema = z.object({
   type: z.literal('one_way_anova'),
   f: z.number(),
@@ -58,6 +102,91 @@ const OneWayAnovaResultSchema = z.object({
   dfBetween: z.number(),
   dfWithin: z.number(),
   groupMeans: z.array(z.object({ label: z.string(), mean: z.number() })),
+});
+
+const TwoWayAnovaResultSchema = z.object({
+  type: z.literal('two_way_anova'),
+  factorARows: z.array(z.string()),
+  factorBCols: z.array(z.string()),
+  fA: z.number(),
+  pA: z.number(),
+  fB: z.number(),
+  pB: z.number(),
+  fAB: z.number(),
+  pAB: z.number(),
+  dfA: z.number(),
+  dfB: z.number(),
+  dfAB: z.number(),
+  dfWithin: z.number(),
+  cellMeans: z.array(z.object({ rowLabel: z.string(), colLabel: z.string(), mean: z.number() })),
+});
+
+const ChiSquareResultSchema = z.object({
+  type: z.literal('chi_square'),
+  chi2: z.number(),
+  p: z.number(),
+  df: z.number(),
+});
+
+const FisherExactResultSchema = z.object({
+  type: z.literal('fisher_exact'),
+  p: z.number(),
+  oddsRatio: z.number().optional(),
+});
+
+const KaplanMeierResultSchema = z.object({
+  type: z.literal('kaplan_meier'),
+  curves: z.array(
+    z.object({
+      group: z.string(),
+      time: z.array(z.number()),
+      survival: z.array(z.number()),
+    })
+  ),
+  medianSurvival: z.array(z.object({ group: z.string(), median: z.number() })).optional(),
+});
+
+const FractionOfTotalResultSchema = z.object({
+  type: z.literal('fraction_of_total'),
+  fractions: z.array(
+    z.object({ label: z.string(), value: z.number(), fraction: z.number() })
+  ),
+});
+
+const MannWhitneyResultSchema = z.object({
+  type: z.literal('mann_whitney'),
+  u: z.number(),
+  p: z.number(),
+  label1: z.string(),
+  label2: z.string(),
+  median1: z.number(),
+  median2: z.number(),
+});
+
+const KruskalWallisResultSchema = z.object({
+  type: z.literal('kruskal_wallis'),
+  h: z.number(),
+  p: z.number(),
+  df: z.number(),
+  groupMedians: z.array(z.object({ label: z.string(), median: z.number() })),
+});
+
+const RocAucResultSchema = z.object({
+  type: z.literal('roc_auc'),
+  auc: z.number(),
+  n: z.number(),
+  labelScore: z.string(),
+  labelOutcome: z.string(),
+});
+
+const NormalityTestResultSchema = z.object({
+  type: z.literal('normality_test'),
+  passed: z.boolean(),
+  p: z.number(),
+  statistic: z.number(),
+  skewness: z.number(),
+  kurtosis: z.number(),
+  label: z.string(),
 });
 
 const LinearRegressionResultSchema = z.object({
@@ -82,7 +211,17 @@ const DoseResponse4plResultSchema = z.object({
 const AnalysisResultSchema = z.discriminatedUnion('type', [
   DescriptiveResultSchema,
   UnpairedTtestResultSchema,
+  PairedTtestResultSchema,
   OneWayAnovaResultSchema,
+  TwoWayAnovaResultSchema,
+  ChiSquareResultSchema,
+  FisherExactResultSchema,
+  KaplanMeierResultSchema,
+  FractionOfTotalResultSchema,
+  MannWhitneyResultSchema,
+  KruskalWallisResultSchema,
+  RocAucResultSchema,
+  NormalityTestResultSchema,
   LinearRegressionResultSchema,
   DoseResponse4plResultSchema,
 ]);
@@ -117,6 +256,8 @@ const GraphOptionsSchema = z.object({
   errorBarType: z.enum(['sem', 'sd', 'ci', 'none']).optional(),
   showLegend: z.boolean().optional(),
   annotations: z.array(ChartAnnotationSchema).optional(),
+  showLineOfIdentity: z.boolean().optional(),
+  yAxis2SeriesIndex: z.number().optional(),
 });
 
 const GraphSchema = z.object({
@@ -128,10 +269,25 @@ const GraphSchema = z.object({
   options: GraphOptionsSchema,
 });
 
+const LayoutItemSchema = z.object({
+  graphId: z.string(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
+
+const LayoutSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  items: z.array(LayoutItemSchema),
+});
+
 const SelectionSchema = z.union([
   z.object({ type: z.literal('table'), tableId: z.string() }),
   z.object({ type: z.literal('analysis'), analysisId: z.string() }),
   z.object({ type: z.literal('graph'), graphId: z.string() }),
+  z.object({ type: z.literal('layout'), layoutId: z.string() }),
   z.null(),
 ]);
 
@@ -140,6 +296,7 @@ export const ProjectSchema = z.object({
   tables: z.array(DataTableSchema),
   analyses: z.array(AnalysisSchema),
   graphs: z.array(GraphSchema),
+  layouts: z.array(LayoutSchema).default([]),
   selection: SelectionSchema,
 });
 
@@ -147,6 +304,9 @@ export function migrateProject(raw: unknown): unknown {
   const obj = raw as Record<string, unknown>;
   if (typeof obj?.version !== 'number') {
     return { ...obj, version: CURRENT_PROJECT_VERSION };
+  }
+  if (!Array.isArray(obj.layouts)) {
+    return { ...obj, layouts: [] };
   }
   return obj;
 }

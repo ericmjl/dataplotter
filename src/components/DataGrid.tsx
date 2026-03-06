@@ -25,6 +25,8 @@ export function DataGrid({
   'aria-label': ariaLabel = 'Data grid',
 }: DataGridProps) {
   const [localData, setLocalData] = useState<ColumnTableData | XYTableData>(data);
+  const [editingColIndex, setEditingColIndex] = useState<number | null>(null);
+  const [editingLabel, setEditingLabel] = useState('');
 
   useEffect(() => {
     setLocalData(data);
@@ -38,6 +40,19 @@ export function DataGrid({
     const d = localData as ColumnTableData;
     const { columnLabels, rows, groupLabels, groupForColumn } = d;
     const hasGroups = groupLabels?.length && groupForColumn?.length === columnLabels.length;
+    const handleStartEdit = (i: number) => {
+      setEditingColIndex(i);
+      setEditingLabel(columnLabels[i] ?? '');
+    };
+    const handleCommitLabel = () => {
+      if (editingColIndex === null) return;
+      const trimmed = editingLabel.trim();
+      const nextLabels = [...columnLabels];
+      nextLabels[editingColIndex] = trimmed || (columnLabels[editingColIndex] ?? '');
+      setLocalData({ ...d, columnLabels: nextLabels });
+      setEditingColIndex(null);
+      onDataChange({ ...d, columnLabels: nextLabels });
+    };
     return (
       <div className="data-grid-wrap">
         <table className="data-grid" aria-label={ariaLabel}>
@@ -65,7 +80,34 @@ export function DataGrid({
               </th>
               {columnLabels.map((label, i) => (
                 <th key={i} scope="col">
-                  {label}
+                  {editingColIndex === i ? (
+                    <input
+                      type="text"
+                      className="data-grid-header-input"
+                      value={editingLabel}
+                      onChange={(e) => setEditingLabel(e.target.value)}
+                      onBlur={handleCommitLabel}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCommitLabel();
+                        if (e.key === 'Escape') {
+                          setEditingLabel(columnLabels[i] ?? '');
+                          setEditingColIndex(null);
+                        }
+                      }}
+                      aria-label={`Column ${i + 1} name`}
+                      autoFocus
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="data-grid-header-label"
+                      onClick={() => handleStartEdit(i)}
+                      aria-label={`Rename column ${label}`}
+                      title="Click to rename column"
+                    >
+                      {label}
+                    </button>
+                  )}
                 </th>
               ))}
             </tr>

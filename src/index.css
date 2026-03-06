@@ -304,6 +304,41 @@ button:focus-visible {
   flex: 1;
   min-width: 0;
 }
+.sidebar-item-action {
+  flex-shrink: 0;
+  width: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-item-row:hover .sidebar-item-action {
+  opacity: 1;
+}
+.sidebar-item-action:hover {
+  color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.sidebar-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 2px;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: inherit;
+}
+
 .sidebar-item-delete {
   flex-shrink: 0;
   width: 22px;
@@ -445,6 +480,33 @@ button:focus-visible {
 }
 
 /* ── Toolbar ──────────────────────────────────────────────── */
+.table-view-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+.table-view-title-row h2 {
+  margin: 0;
+}
+.table-view-title-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.table-view-rename-btn {
+  flex-shrink: 0;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.9rem;
+}
+
 .toolbar {
   display: flex;
   gap: 0.5rem;
@@ -517,6 +579,36 @@ button:focus-visible {
 
 .data-grid th:not(:last-child) {
   border-right: 1px solid var(--border-subtle);
+}
+
+.data-grid-header-label {
+  display: block;
+  width: 100%;
+  padding: 0.25rem 0.4rem;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.data-grid-header-label:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.data-grid-header-input {
+  width: 100%;
+  min-width: 3rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+}
+.data-grid-header-input:focus {
+  outline: none;
 }
 
 .data-grid th.data-grid-group-header {
