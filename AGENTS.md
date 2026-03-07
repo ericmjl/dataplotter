@@ -12,7 +12,24 @@ This file gives **rules and conventions** for AI coding agents and human develop
 2. **Run the app.**  
    - [docs/tutorials/getting-started.md](docs/tutorials/getting-started.md): `npm install`, optional `.env.local`, `npm run dev`.
 
-3. **Before implementation:** When the user describes problems, new features, or bug fixes, **always update HLD, LLD, and EARS** (as applicable) and **study the codebase thoroughly** before writing implementation code. Keep design and specs in sync with behavior.
+ 3. **Before implementation:** When the user describes problems, new features, or bug fixes, **always update HLD, LLD, and EARS** (as applicable) and **study the codebase thoroughly** before writing implementation code. Keep design and specs in sync with behavior.
+
+## Design-driven development and TDD
+
+**Always follow this workflow for new features and significant changes:**
+
+1. **Design first:** Update HLD, LLD, and EARS before writing implementation code. Ensure specs are clear and traceable.
+2. **Red-green TDD:**
+   - Write a failing test that defines the expected behavior.
+   - Run the test to confirm it fails (red).
+   - Write the minimal implementation to make the test pass (green).
+   - Refactor if needed, keeping tests green.
+3. **Validate:** After implementation, run `npm test` and `npm run build` to ensure nothing is broken.
+
+**Reference:**
+- [HLD](docs/high-level-design.md) — System architecture and goals.
+- [LLDs](docs/llds/) — Component-level design (analyses, graphs, etc.).
+- [EARS](docs/specs/prism-clone-specs.md) — Requirement specs with traceability.
 
 ## Conventions
 

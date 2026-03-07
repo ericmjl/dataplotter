@@ -57,6 +57,52 @@ describe('runAnalysisAsync', () => {
     expect(result.value.type).toBe('unpaired_ttest');
   });
 
+  it('returns unpaired_ttest with Bayesian fields when PyMC is available', async () => {
+    const format = 'column';
+    const tableData = {
+      columnLabels: ['Group1', 'Group2'],
+      rows: [
+        [10, 20],
+        [12, 22],
+        [11, 21],
+        [13, 23],
+        [9, 19],
+      ],
+    };
+    const result = await runAnalysisAsync(
+      format,
+      'unpaired_ttest',
+      tableData,
+      { type: 'unpaired_ttest', columnLabels: ['Group1', 'Group2'] }
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.type).toBe('unpaired_ttest');
+    if (result.value.type !== 'unpaired_ttest') return;
+    
+    // Frequentist fields should always be present
+    expect(result.value.mean1).toBeDefined();
+    expect(result.value.mean2).toBeDefined();
+    expect(result.value.t).toBeDefined();
+    expect(result.value.p).toBeDefined();
+    expect(result.value.df).toBeDefined();
+    
+    // Bayesian fields should be present when PyMC is available
+    expect(result.value.mean1CrI).toBeDefined();
+    expect(result.value.mean2CrI).toBeDefined();
+    expect(result.value.meanDiffCrI).toBeDefined();
+    expect(result.value.pSuperiority).toBeDefined();
+    
+    // Credible intervals should be arrays of two numbers
+    expect(result.value.mean1CrI).toHaveLength(2);
+    expect(result.value.mean2CrI).toHaveLength(2);
+    expect(result.value.meanDiffCrI).toHaveLength(2);
+    
+    // P(superiority) should be between 0 and 1
+    expect(result.value.pSuperiority).toBeGreaterThanOrEqual(0);
+    expect(result.value.pSuperiority).toBeLessThanOrEqual(1);
+  });
+
   it('returns linear_regression result with slope, intercept, R², p', async () => {
     const format = 'xy';
     const tableData = {

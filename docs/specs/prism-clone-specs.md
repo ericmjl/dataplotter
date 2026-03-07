@@ -76,6 +76,10 @@
 
 - [x] **PRISM-ANA-013**: The system shall support nonparametric alternatives (e.g. Mann-Whitney, Kruskal-Wallis, Wilcoxon, Friedman) for applicable table types.
 - [x] **PRISM-ANA-014**: The system shall implement all Prism analysis types applicable to each table format (including ROC, Bland–Altman, Deming regression, three-way ANOVA, and others as defined in the registry) so that the clone achieves full analysis parity with Prism. (Representative set implemented: ROC AUC, normality test; full parity phased.)
+- [ ] **PRISM-ANA-015**: When PyMC is available and the user runs an unpaired t-test, the system shall compute and display Bayesian posterior estimates (group mean CrIs, mean difference CrI, P(superiority)) alongside frequentist results (t, p, df, CI).
+- [ ] **PRISM-ANA-016**: When PyMC is available and the user runs a paired t-test, the system shall compute and display Bayesian posterior estimates alongside frequentist results.
+- [ ] **PRISM-ANA-017**: The system shall use improper flat priors for Bayesian group comparisons (μ priors flat; σ priors half-flat) during concept validation, with the option to refine prior choice later.
+- [ ] **PRISM-ANA-018**: When PyMC fails or is unavailable, the system shall fall forward to displaying frequentist results only (no error; Bayesian fields undefined).
 
 ---
 

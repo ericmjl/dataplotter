@@ -87,18 +87,22 @@ The system stays the same as current dataplotter at the top level:
 
 ---
 
-## 6. Bayesian-by-default analysis layer (folded in)
+## 6. Side-by-side frequentist and Bayesian analysis layer
 
-Statistical analyses in the clone use **Bayesian estimation by default**: report posterior summaries and credible intervals (and optionally retain or reframe p-values as posterior probabilities). This is part of the Prism clone design, not a separate track.
+Statistical analyses in the clone provide **both frequentist and Bayesian results side-by-side**: traditional test statistics (t, F, p-values, CIs) plus posterior summaries and credible intervals when PyMC is available. This dual approach serves users who want classical hypothesis testing alongside Bayesian estimation.
 
 **Architecture:**
 
-- **Single entry point:** UI and NL continue to call `runAnalysis()` (or an async variant when needed). The engine invokes Bayesian implementations by default.
-- **Result types:** Existing `AnalysisResult` variants are extended with Bayesian fields (e.g. credible intervals, P(diff > 0), posterior SD). Same result shape for charts and UI.
-- **Implementation path:** Pyodide + PyMC first. Bayesian analyses run via Pyodide (CPython in WASM) and PyMC; load on demand so initial app load stays fast. Async only: `runAnalysis()` (or an async variant) returns a Promise; UI shows loading state. Use a single-threaded sampler to avoid Pyodide multiprocessing issues. No bayes.js or TypeScript Bayesian implementations; the engine calls into PyMC for all Bayesian analyses.
-- **Scope:** Descriptive, t-tests, one-way ANOVA, linear regression, dose-response 4PL (and all new analyses as they are added) get Bayesian versions; result types carry posterior/credible output. Detailed task breakdown remains in `docs/plans/2025-03-05-bayesian-by-default.md` for implementation; the HLD commits to Bayesian-by-default as part of the clone.
+- **Single entry point:** UI and NL continue to call `runAnalysis()` (sync) or `runAnalysisAsync()` (async). The engine computes frequentist results synchronously; when PyMC loads, it extends the same result with Bayesian fields.
+- **Result types:** Existing `AnalysisResult` variants are extended with optional Bayesian fields (e.g. `meanDiffCrI`, `pSuperiority`, posterior SDs). Same result shape for charts and UI; Bayesian fields are populated when PyMC completes.
+- **Implementation path:** 
+  - **Frequentist:** TypeScript implementations using jStat (existing path, synchronous).
+  - **Bayesian:** Pyodide + PyMC (CPython in WASM), loaded on demand. Async only via `runAnalysisAsync()`. Uses improper flat priors initially (concept validation); prior choice can be refined later.
+  - **Fall-forward:** When PyMC fails or is unavailable, UI shows frequentist results only. When PyMC succeeds, both sections display.
+- **Scope:** Descriptive, t-tests (unpaired/paired), one-way ANOVA, linear regression, dose-response 4PL get Bayesian extensions. Result types carry optional posterior/credible output. Detailed task breakdown in `docs/plans/2025-03-05-bayesian-by-default.md`.
+- **Group comparison terminology:** Analyses traditionally called "t-tests" are also described as "group comparisons" in Bayesian context (following Kruschke's BEST: "Bayesian Estimation Supersedes the t-Test"). The analysis type IDs remain `unpaired_ttest` and `paired_ttest` for backward compatibility; Bayesian outputs focus on posterior means, differences, and P(superiority) rather than t-statistics.
 
-**Current codebase:** HLD assumes dataplotter’s existing architecture (see [reference/architecture.md](reference/architecture.md)). LLDs and EARS detail changes per component.
+**Current codebase:** HLD assumes dataplotter's existing architecture (see [reference/architecture.md](reference/architecture.md)). LLDs and EARS detail changes per component.
 
 ---
 

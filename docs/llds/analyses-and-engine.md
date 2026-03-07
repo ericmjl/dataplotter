@@ -49,6 +49,25 @@ Analyses that need table data from a specific format: Column (descriptive, t-tes
 
 ---
 
+## Bayesian result fields (side-by-side with frequentist)
+
+Analyses that support Bayesian estimation (via PyMC) include optional Bayesian fields in their result types. These fields are populated when PyMC completes successfully; otherwise, only frequentist fields are present.
+
+**unpaired_ttest / paired_ttest (group comparisons):**
+- `mean1CrI?: [number, number]` — 95% credible interval for group 1 mean
+- `mean2CrI?: [number, number]` — 95% credible interval for group 2 mean
+- `meanDiffCrI?: [number, number]` — 95% credible interval for mean difference
+- `pSuperiority?: number` — P(μ₁ > μ₂), probability that group 1 mean exceeds group 2
+- `effectSize?: number` — Cohen's d (posterior mean)
+- `effectSizeCrI?: [number, number]` — 95% CrI for Cohen's d
+
+**Implementation notes:**
+- PyMC model uses improper flat priors (concept validation phase)
+- Posterior samples: μ₁, μ₂ ~ Normal(μ, σ) with flat priors on means, half-flat on σs
+- Async only: `runAnalysisAsync()` loads PyMC and extends the frequentist result
+
+---
+
 ## Result type contract
 
 Each result variant has `type: '<analysis_type>'` and a set of fields. The chart adapter and UI may depend on specific fields (e.g. `curve` for dose-response overlay; `groupMeans` for ANOVA). New analyses must:
