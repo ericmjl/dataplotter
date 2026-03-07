@@ -33,6 +33,7 @@ jobs:
         run: npm run electron:build
         env:
           ELECTRON: '1'
+          NODE_OPTIONS: '--max-old-space-size=4096'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
