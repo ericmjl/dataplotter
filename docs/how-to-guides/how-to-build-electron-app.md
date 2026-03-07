@@ -2,6 +2,15 @@
 
 **How-to:** Build and run Dataplotter as a desktop app (macOS, Windows, Linux).
 
+## Automated builds (CI)
+
+Quick releases are automated with GitHub Actions (`.github/workflows/electron-build.yml`):
+
+- **On push to `main`** or **Run workflow** (Actions → Electron build → Run workflow): the app is built on macOS, Windows, and Linux. Download installers from the run’s **Artifacts** (e.g. `release-macos-latest`, `release-windows-latest`, `release-ubuntu-latest`).
+- **On push of a tag `v*`** (e.g. `git tag v1.0.0 && git push origin v1.0.0`): the same three builds run, then a **GitHub Release** is created and the installers are attached.
+
+No secrets are required for unsigned builds. For code signing (macOS notarization, Windows Authenticode), configure the required secrets and electron-builder options (see electron-builder docs).
+
 ## Prerequisites
 
 - Node.js and npm installed.
