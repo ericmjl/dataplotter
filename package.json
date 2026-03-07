@@ -22,6 +22,7 @@
     "@ai-sdk/openai": "^3.0.41",
     "@tanstack/react-table": "^8.21.3",
     "ai": "^6.0.116",
+    "electron-updater": "^6.8.3",
     "jstat": "^1.9.6",
     "jszip": "^3.10.1",
     "ml-levenberg-marquardt": "^5.0.0",
@@ -71,7 +72,7 @@
       "dist",
       "electron"
     ],
-    "publish": null,
+    "publish": "github",
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
