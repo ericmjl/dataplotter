@@ -87,6 +87,28 @@ export const DoseResponse4plOptionsSchema = z.object({
   dataMode: dataModeSchema,
 });
 
+export const CorrelationOptionsSchema = z.object({
+  type: z.literal('correlation'),
+  dataMode: dataModeSchema,
+});
+
+export const MultipleRegressionOptionsSchema = z.object({
+  type: z.literal('multiple_regression'),
+  yVariableLabel: z.string().optional(),
+  dataMode: dataModeSchema,
+});
+
+export const NestedTtestOptionsSchema = z.object({
+  type: z.literal('nested_ttest'),
+  groupLabels: z.tuple([z.string(), z.string()]).optional(),
+  dataMode: dataModeSchema,
+});
+
+export const NestedOneWayAnovaOptionsSchema = z.object({
+  type: z.literal('nested_one_way_anova'),
+  dataMode: dataModeSchema,
+});
+
 export const AnalysisOptionsSchema = z.discriminatedUnion('type', [
   DescriptiveOptionsSchema,
   UnpairedTtestOptionsSchema,
@@ -103,4 +125,8 @@ export const AnalysisOptionsSchema = z.discriminatedUnion('type', [
   NormalityTestOptionsSchema,
   LinearRegressionOptionsSchema,
   DoseResponse4plOptionsSchema,
+  CorrelationOptionsSchema,
+  MultipleRegressionOptionsSchema,
+  NestedTtestOptionsSchema,
+  NestedOneWayAnovaOptionsSchema,
 ]);

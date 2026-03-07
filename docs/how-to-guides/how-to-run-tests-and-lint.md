@@ -8,6 +8,9 @@
 # Run all unit tests (Vitest)
 npm test
 
+# Run tests with coverage report (v8; requires @vitest/coverage-v8)
+npm run test:coverage
+
 # Run E2E tests (Cypress; start dev server first: npm run dev)
 npm run test:e2e
 

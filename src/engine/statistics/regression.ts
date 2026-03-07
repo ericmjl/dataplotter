@@ -30,6 +30,23 @@ export function runLinearRegression(
   }
   const xArr = pairs.map((p) => p.x);
   const yArr = pairs.map((p) => p.y);
+
+  // Guard: constant x (zero variance) makes slope undefined; jStat returns NaN.
+  const meanX = xArr.reduce((a, b) => a + b, 0) / xArr.length;
+  const ssX = xArr.reduce((sum, xi) => sum + (xi - meanX) ** 2, 0);
+  if (ssX === 0 || !Number.isFinite(ssX)) {
+    const meanY = yArr.reduce((a, b) => a + b, 0) / yArr.length;
+    return {
+      type: 'linear_regression',
+      slope: 0,
+      intercept: meanY,
+      r2: 0,
+      p: 1,
+      slopeCI: [0, 0],
+      interceptCI: [meanY, meanY],
+    };
+  }
+
   const jMatX = jStat.builddxmatrix(xArr.map((xi) => [xi]));
   const jMatY = jStat.buildymatrix(yArr);
   const beta = jStat.regress(jMatX, jMatY) as number[];
@@ -39,10 +56,21 @@ export function runLinearRegression(
   const r2 = Number(compile.anova.r2);
   const slopeStats = compile.stats?.[1];
   const interceptStats = compile.stats?.[0];
-  const p = slopeStats != null ? Number(slopeStats[3]) : 1;
   const slopeSE = slopeStats != null ? Math.abs(Number(slopeStats[1]) ?? 0) : 0;
   const interceptSE = interceptStats != null ? Math.abs(Number(interceptStats[1]) ?? 0) : 0;
   const df = pairs.length - 2;
+
+  // jStat.regresst uses df = n - 2 - 1 = n - 3 for the slope t-test (incorrect). Use correct df = n - 2.
+  let p: number;
+  if (slopeSE === 0 || !Number.isFinite(slopeSE)) {
+    p = slope === 0 ? 1 : 0;
+  } else if (df > 0) {
+    const tSlope = Math.abs(slope) / slopeSE;
+    p = 2 * (1 - jStat.studentt.cdf(tSlope, df));
+  } else {
+    p = 1;
+  }
+
   const tCrit = df > 0 ? jStat.studentt.inv(0.975, df) : 0;
   const slopeCI: [number, number] = [
     slope - tCrit * slopeSE,
@@ -56,7 +84,7 @@ export function runLinearRegression(
     type: 'linear_regression',
     slope,
     intercept,
-    r2,
+    r2: Number.isFinite(r2) ? r2 : 0,
     p,
     slopeCI,
     interceptCI,

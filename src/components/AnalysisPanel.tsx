@@ -357,5 +357,76 @@ function AnalysisResultTable({ result }: { result: import('../types').AnalysisRe
       </table>
     );
   }
+  if (result.type === 'correlation') {
+    return (
+      <div aria-label="Correlation matrix">
+        <table className="data-grid">
+          <thead>
+            <tr>
+              <th></th>
+              {result.labels.map((l) => <th key={l}>{l}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {result.labels.map((label, i) => (
+              <tr key={label}>
+                <th>{label}</th>
+                {result.r[i].map((val, j) => (
+                  <td key={j}>
+                    {i === j ? '1' : Number.isFinite(val) ? val.toFixed(3) : '—'}
+                    {result.n[i][j] != null && result.n[i][j] > 0 && i !== j && (
+                      <span className="text-muted"> (n={result.n[i][j]})</span>
+                    )}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  if (result.type === 'multiple_regression') {
+    return (
+      <table className="data-grid" aria-label="Multiple regression results">
+        <tbody>
+          <tr><td>R²</td><td>{Number.isFinite(result.r2) ? result.r2.toFixed(4) : '—'}</td></tr>
+          <tr><td>Outcome (Y)</td><td>{result.yLabel}</td></tr>
+          {result.coefficients.map(({ label, coef }) => (
+            <tr key={label}><td>{label}</td><td>{Number.isFinite(coef) ? coef.toFixed(4) : '—'}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+  if (result.type === 'nested_ttest') {
+    return (
+      <table className="data-grid" aria-label="Nested t-test results">
+        <tbody>
+          <tr><td>{result.label1} mean</td><td>{Number.isFinite(result.mean1) ? result.mean1.toFixed(4) : '—'}</td></tr>
+          <tr><td>{result.label2} mean</td><td>{Number.isFinite(result.mean2) ? result.mean2.toFixed(4) : '—'}</td></tr>
+          <tr><td>t</td><td>{Number.isFinite(result.t) ? result.t.toFixed(4) : '—'}</td></tr>
+          <tr><td>df</td><td>{result.df}</td></tr>
+          <tr><td>p</td><td>{Number.isFinite(result.p) ? result.p.toFixed(4) : '—'}</td></tr>
+          <tr><td>95% CI (difference)</td><td>[{Number.isFinite(result.ci[0]) ? result.ci[0].toFixed(4) : '—'}, {Number.isFinite(result.ci[1]) ? result.ci[1].toFixed(4) : '—'}]</td></tr>
+        </tbody>
+      </table>
+    );
+  }
+  if (result.type === 'nested_one_way_anova') {
+    return (
+      <table className="data-grid" aria-label="Nested one-way ANOVA results">
+        <tbody>
+          <tr><td>F</td><td>{Number.isFinite(result.f) ? result.f.toFixed(4) : '—'}</td></tr>
+          <tr><td>p</td><td>{Number.isFinite(result.p) ? result.p.toFixed(4) : '—'}</td></tr>
+          <tr><td>df (between)</td><td>{result.dfBetween}</td></tr>
+          <tr><td>df (within)</td><td>{result.dfWithin}</td></tr>
+          {result.groupMeans.map(({ label, mean }) => (
+            <tr key={label}><td>{label} mean</td><td>{Number.isFinite(mean) ? mean.toFixed(4) : '—'}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
   return null;
 }

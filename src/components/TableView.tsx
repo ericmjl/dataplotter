@@ -8,7 +8,7 @@ import { GroupedDataGrid } from './GroupedDataGrid';
 import { ContingencyDataGrid } from './ContingencyDataGrid';
 import { SurvivalDataGrid } from './SurvivalDataGrid';
 import { PartsOfWholeDataGrid } from './PartsOfWholeDataGrid';
-import type { AnalysisTypeId, GraphTypeId, ColumnTableData, XYTableData, GroupedTableData, ContingencyTableData, SurvivalTableData, PartsOfWholeTableData } from '../types';
+import type { AnalysisTypeId, GraphTypeId, ColumnTableData, XYTableData, GroupedTableData, ContingencyTableData, SurvivalTableData, PartsOfWholeTableData, MultipleVariablesTableData, NestedTableData } from '../types';
 import type { ColumnTransformation, TransformId } from '../types/transformations';
 import { PREDEFINED_TRANSFORMS } from '../lib/transformRegistry';
 
@@ -230,16 +230,43 @@ export function TableView() {
 
   function handleDataChange(newData: typeof tableData) {
     if (gridReadOnly) return;
+    if (tableFormat === 'multipleVariables' && 'variableLabels' in tableData) {
+      const d = newData as ColumnTableData;
+      updateTableData(tableId, { variableLabels: d.columnLabels, rows: d.rows });
+      return;
+    }
+    if (tableFormat === 'nested' && 'columnLabels' in tableData && !('variableLabels' in tableData)) {
+      const d = newData as ColumnTableData;
+      const prev = tableData as NestedTableData;
+      updateTableData(tableId, { ...prev, columnLabels: d.columnLabels, rows: d.rows });
+      return;
+    }
     updateTableData(tableId, newData);
   }
 
   function handleAddRow() {
     if (gridReadOnly) return;
-    if (tableFormat === 'column' && 'rows' in tableData) {
+    if (tableFormat === 'column' && 'rows' in tableData && 'columnLabels' in tableData) {
       const cols = tableData.columnLabels.length;
       updateTableData(tableId, {
         ...tableData,
         rows: [...tableData.rows, Array(cols).fill(null)],
+      });
+    }
+    if (tableFormat === 'multipleVariables' && 'variableLabels' in tableData) {
+      const d = tableData as MultipleVariablesTableData;
+      const cols = d.variableLabels.length;
+      updateTableData(tableId, {
+        variableLabels: d.variableLabels,
+        rows: [...d.rows, Array(cols).fill(null)],
+      });
+    }
+    if (tableFormat === 'nested' && 'columnLabels' in tableData && !('variableLabels' in tableData)) {
+      const d = tableData as NestedTableData;
+      const cols = d.columnLabels.length;
+      updateTableData(tableId, {
+        ...d,
+        rows: [...d.rows, Array(cols).fill(null)],
       });
     }
     if (tableFormat === 'xy' && 'x' in tableData) {
@@ -277,6 +304,22 @@ export function TableView() {
         });
       }
     }
+    if (tableFormat === 'multipleVariables' && 'variableLabels' in tableData) {
+      const d = tableData as MultipleVariablesTableData;
+      updateTableData(tableId, {
+        variableLabels: [...d.variableLabels, `Var${d.variableLabels.length + 1}`],
+        rows: d.rows.map((r) => [...r, null]),
+      });
+    }
+    if (tableFormat === 'nested' && 'columnLabels' in tableData && !('variableLabels' in tableData)) {
+      const d = tableData as NestedTableData;
+      updateTableData(tableId, {
+        ...d,
+        columnLabels: [...d.columnLabels, `S${d.columnLabels.length + 1}`],
+        rows: d.rows.map((r) => [...r, null]),
+        groupForColumn: d.groupForColumn ? [...d.groupForColumn, 0] : undefined,
+      });
+    }
     if (tableFormat === 'xy' && 'x' in tableData) {
       const d = tableData as XYTableData;
       const n = d.x.length;
@@ -289,13 +332,25 @@ export function TableView() {
     }
   }
 
-  const formatForGrid = tableFormat === 'xy' || tableFormat === 'column' ? tableFormat : 'column';
+  const formatForGrid = tableFormat === 'xy' ? 'xy' : 'column';
   const isGrouped = tableFormat === 'grouped' && 'cellValues' in tableData;
   const isContingency = tableFormat === 'contingency' && 'counts' in tableData;
   const isSurvival = tableFormat === 'survival' && 'times' in tableData;
   const isPartsOfWhole = tableFormat === 'partsOfWhole' && 'values' in tableData;
+  const isMultipleVariables = tableFormat === 'multipleVariables' && 'variableLabels' in tableData;
+  const isNested = tableFormat === 'nested' && 'columnLabels' in tableData && !('variableLabels' in tableData);
   const allowedAnalyses = getAllowedAnalyses(tableFormat);
   const allowedGraphTypes = getAllowedGraphTypes(tableFormat);
+
+  const gridDataForDisplay: ColumnTableData | XYTableData =
+    isMultipleVariables
+      ? {
+          columnLabels: (tableData as MultipleVariablesTableData).variableLabels,
+          rows: (tableData as MultipleVariablesTableData).rows,
+        }
+      : isNested
+        ? (tableData as NestedTableData)
+        : (dataForGrid as ColumnTableData | XYTableData);
 
   const deletableColumns =
     tableFormat === 'column' && 'columnLabels' in tableData
@@ -306,7 +361,15 @@ export function TableView() {
         ? (tableData as XYTableData).yLabels.length > 1
           ? schema.columns.filter((c) => c.id.startsWith('y-'))
           : []
-        : [];
+        : tableFormat === 'multipleVariables' && 'variableLabels' in tableData
+          ? (tableData as MultipleVariablesTableData).variableLabels.length > 1
+            ? schema.columns
+            : []
+          : tableFormat === 'nested' && 'columnLabels' in tableData
+            ? (tableData as NestedTableData).columnLabels.length > 1
+              ? schema.columns
+              : []
+            : [];
 
   function handleAddAnalysis(analysisType: AnalysisTypeId) {
     const options = getDefaultOptions(tableFormat, analysisType, tableData);
@@ -376,24 +439,26 @@ export function TableView() {
         )}
       </div>
       <div className="toolbar">
-        <div className="view-mode-toggle" role="group" aria-label="Table view format">
-          <button
-            type="button"
-            className={viewMode === 'wide' ? 'active' : ''}
-            onClick={() => setViewMode('wide')}
-            aria-pressed={viewMode === 'wide'}
-          >
-            Wide
-          </button>
-          <button
-            type="button"
-            className={viewMode === 'tidy' ? 'active' : ''}
-            onClick={() => setViewMode('tidy')}
-            aria-pressed={viewMode === 'tidy'}
-          >
-            Tidy
-          </button>
-        </div>
+        {(tableFormat === 'column' || tableFormat === 'xy') && (
+          <div className="view-mode-toggle" role="group" aria-label="Table view format">
+            <button
+              type="button"
+              className={viewMode === 'wide' ? 'active' : ''}
+              onClick={() => setViewMode('wide')}
+              aria-pressed={viewMode === 'wide'}
+            >
+              Wide
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'tidy' ? 'active' : ''}
+              onClick={() => setViewMode('tidy')}
+              aria-pressed={viewMode === 'tidy'}
+            >
+              Tidy
+            </button>
+          </div>
+        )}
         {hasTransformations && (
           <div className="view-mode-toggle" role="group" aria-label="Show raw or transformed data">
             <button
@@ -414,7 +479,7 @@ export function TableView() {
             </button>
           </div>
         )}
-        {!isGrouped && !isContingency && !isSurvival && !isPartsOfWhole && !gridReadOnly && (
+        {(tableFormat === 'column' || tableFormat === 'xy' || tableFormat === 'multipleVariables' || tableFormat === 'nested') && !gridReadOnly && (
           <>
             <button type="button" onClick={handleAddRow} aria-label="Add row">
               Add row
@@ -510,7 +575,7 @@ export function TableView() {
             </ul>
           )}
         </div>
-        {!isGrouped && !isContingency && !isSurvival && !isPartsOfWhole && (
+        {(tableFormat === 'column' || tableFormat === 'xy') && (
           <div style={{ position: 'relative' }}>
             <button
               type="button"
@@ -592,6 +657,15 @@ export function TableView() {
         <PartsOfWholeDataGrid
           data={tableData as PartsOfWholeTableData}
           onDataChange={(d) => handleDataChange(d)}
+          aria-label={`Data for ${tableName}`}
+        />
+      ) : isMultipleVariables || isNested ? (
+        <DataGrid
+          schema={schema}
+          format="column"
+          data={gridDataForDisplay}
+          onDataChange={(d) => handleDataChange(d)}
+          readOnly={gridReadOnly}
           aria-label={`Data for ${tableName}`}
         />
       ) : viewMode === 'wide' ? (

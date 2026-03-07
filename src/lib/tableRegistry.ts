@@ -8,6 +8,8 @@ import type {
   ContingencyTableData,
   SurvivalTableData,
   PartsOfWholeTableData,
+  MultipleVariablesTableData,
+  NestedTableData,
   AnalysisOptions,
 } from '../types';
 
@@ -41,6 +43,8 @@ const GROUPED_ANALYSES: AnalysisTypeId[] = ['two_way_anova'];
 const CONTINGENCY_ANALYSES: AnalysisTypeId[] = ['chi_square', 'fisher_exact'];
 const SURVIVAL_ANALYSES: AnalysisTypeId[] = ['kaplan_meier'];
 const PARTS_OF_WHOLE_ANALYSES: AnalysisTypeId[] = ['fraction_of_total'];
+const MULTIPLE_VARIABLES_ANALYSES: AnalysisTypeId[] = ['descriptive', 'correlation', 'multiple_regression'];
+const NESTED_ANALYSES: AnalysisTypeId[] = ['descriptive', 'nested_ttest', 'nested_one_way_anova'];
 
 const COLUMN_GRAPH_TYPES: GraphTypeId[] = ['bar', 'box'];
 const XY_GRAPH_TYPES: GraphTypeId[] = [
@@ -52,6 +56,8 @@ const XY_GRAPH_TYPES: GraphTypeId[] = [
 const GROUPED_GRAPH_TYPES: GraphTypeId[] = ['groupedBar'];
 const SURVIVAL_GRAPH_TYPES: GraphTypeId[] = ['survival'];
 const PARTS_OF_WHOLE_GRAPH_TYPES: GraphTypeId[] = ['pie'];
+const MULTIPLE_VARIABLES_GRAPH_TYPES: GraphTypeId[] = ['scatter'];
+const NESTED_GRAPH_TYPES: GraphTypeId[] = ['bar', 'box'];
 
 export function getSchema(
   format: TableFormatId,
@@ -62,6 +68,8 @@ export function getSchema(
     | ContingencyTableData
     | SurvivalTableData
     | PartsOfWholeTableData
+    | MultipleVariablesTableData
+    | NestedTableData
 ): TableSchema {
   if (format === 'column' && data && 'columnLabels' in data && !('cellValues' in data)) {
     return {
@@ -123,10 +131,30 @@ export function getSchema(
       ],
     };
   }
+  if (format === 'multipleVariables' && data && 'variableLabels' in data) {
+    const mv = data as MultipleVariablesTableData;
+    return {
+      columns: mv.variableLabels.map((label, i) => ({
+        id: `col-${i}`,
+        label,
+        kind: 'number' as const,
+      })),
+    };
+  }
+  if (format === 'nested' && data && 'columnLabels' in data && !('cellValues' in data) && !('variableLabels' in data)) {
+    const nest = data as NestedTableData;
+    return {
+      columns: nest.columnLabels.map((label, i) => ({
+        id: `col-${i}`,
+        label,
+        kind: 'number' as const,
+      })),
+    };
+  }
   if (format === 'column') {
     return { columns: [] };
   }
-  if (format === 'grouped' || format === 'contingency' || format === 'survival' || format === 'partsOfWhole') {
+  if (format === 'grouped' || format === 'contingency' || format === 'survival' || format === 'partsOfWhole' || format === 'multipleVariables' || format === 'nested') {
     return { columns: [], rowLabels: [] };
   }
   return {
@@ -144,6 +172,8 @@ export function getAllowedAnalyses(format: TableFormatId): AnalysisTypeId[] {
   if (format === 'contingency') return [...CONTINGENCY_ANALYSES];
   if (format === 'survival') return [...SURVIVAL_ANALYSES];
   if (format === 'partsOfWhole') return [...PARTS_OF_WHOLE_ANALYSES];
+  if (format === 'multipleVariables') return [...MULTIPLE_VARIABLES_ANALYSES];
+  if (format === 'nested') return [...NESTED_ANALYSES];
   return [];
 }
 
@@ -154,6 +184,8 @@ export function getAllowedGraphTypes(format: TableFormatId): GraphTypeId[] {
   if (format === 'contingency') return [];
   if (format === 'survival') return [...SURVIVAL_GRAPH_TYPES];
   if (format === 'partsOfWhole') return [...PARTS_OF_WHOLE_GRAPH_TYPES];
+  if (format === 'multipleVariables') return [...MULTIPLE_VARIABLES_GRAPH_TYPES];
+  if (format === 'nested') return [...NESTED_GRAPH_TYPES];
   return [];
 }
 
@@ -166,8 +198,38 @@ export function validateTableData(
     | ContingencyTableData
     | SurvivalTableData
     | PartsOfWholeTableData
+    | MultipleVariablesTableData
+    | NestedTableData
 ): { valid: boolean; errors?: string[] } {
   const errors: string[] = [];
+  if (format === 'multipleVariables' && 'variableLabels' in data) {
+    const mv = data as MultipleVariablesTableData;
+    if (mv.variableLabels.length === 0) errors.push('At least one variable required');
+    const nCols = mv.variableLabels.length;
+    mv.rows.forEach((row, i) => {
+      if (row.length !== nCols) {
+        errors.push(`Row ${i + 1} has ${row.length} values, expected ${nCols}`);
+      }
+    });
+    return errors.length > 0 ? { valid: false, errors } : { valid: true };
+  }
+  if (format === 'nested' && 'columnLabels' in data && !('cellValues' in data) && !('variableLabels' in data)) {
+    const nest = data as NestedTableData;
+    if (nest.columnLabels.length < 2) errors.push('Nested table requires at least two columns (subcolumns)');
+    const nCols = nest.columnLabels.length;
+    nest.rows.forEach((row, i) => {
+      if (row.length !== nCols) {
+        errors.push(`Row ${i + 1} has ${row.length} values, expected ${nCols}`);
+      }
+    });
+    if (nest.groupLabels?.length && nest.groupForColumn?.length === nest.columnLabels.length) {
+      const nGroups = nest.groupLabels.length;
+      if (nest.groupForColumn.some((g) => g < 0 || g >= nGroups)) {
+        errors.push('groupForColumn must be valid group indices');
+      }
+    }
+    return errors.length > 0 ? { valid: false, errors } : { valid: true };
+  }
   if (format === 'contingency' && 'counts' in data) {
     const c = data as ContingencyTableData;
     if (c.rowLabels.length === 0) errors.push('At least one row label required');
@@ -258,10 +320,58 @@ export function validateForAnalysis(
     | GroupedTableData
     | ContingencyTableData
     | SurvivalTableData
-    | PartsOfWholeTableData,
+    | PartsOfWholeTableData
+    | MultipleVariablesTableData
+    | NestedTableData,
   analysisType: AnalysisTypeId
 ): { valid: boolean; errors?: string[] } {
   const errors: string[] = [];
+  if (format === 'multipleVariables' && 'variableLabels' in data) {
+    const mv = data as MultipleVariablesTableData;
+    const nPerCol = mv.variableLabels.map((_, c) =>
+      countNonNull(mv.rows.map((r) => r[c]))
+    );
+    if (analysisType === 'descriptive') {
+      if (mv.variableLabels.length === 0 || nPerCol.every((n) => n === 0)) {
+        errors.push('At least one variable with one value required');
+      }
+    }
+    if (analysisType === 'correlation') {
+      if (mv.variableLabels.length < 2) errors.push('Correlation requires at least two variables');
+      else if (nPerCol.some((n) => n < 2)) errors.push('Each variable needs at least 2 values for correlation');
+    }
+    if (analysisType === 'multiple_regression') {
+      if (mv.variableLabels.length < 2) errors.push('Multiple regression requires at least two variables');
+      else if (nPerCol.some((n) => n < 2)) errors.push('Each variable needs at least 2 values');
+    }
+    return errors.length > 0 ? { valid: false, errors } : { valid: true };
+  }
+  if (format === 'nested' && 'columnLabels' in data && !('cellValues' in data) && !('variableLabels' in data)) {
+    const nest = data as NestedTableData;
+    const nPerCol = nest.columnLabels.map((_, c) =>
+      countNonNull(nest.rows.map((r) => r[c]))
+    );
+    if (analysisType === 'descriptive') {
+      if (nest.columnLabels.length === 0 || nPerCol.every((n) => n === 0)) {
+        errors.push('At least one column with one value required');
+      }
+    }
+    if (analysisType === 'nested_ttest') {
+      const hasGroups = nest.groupLabels?.length && nest.groupForColumn?.length === nest.columnLabels.length;
+      if (!hasGroups || (nest.groupLabels?.length ?? 0) !== 2) {
+        errors.push('Nested t-test requires exactly two groups (set group labels on columns)');
+      } else {
+        const g0 = nPerCol.filter((_, c) => nest.groupForColumn![c] === 0).reduce((a, b) => a + b, 0);
+        const g1 = nPerCol.filter((_, c) => nest.groupForColumn![c] === 1).reduce((a, b) => a + b, 0);
+        if (g0 < 2 || g1 < 2) errors.push('Each group needs at least 2 values total');
+      }
+    }
+    if (analysisType === 'nested_one_way_anova') {
+      if (nest.columnLabels.length < 2) errors.push('Nested one-way ANOVA requires at least two columns');
+      else if (nPerCol.some((n) => n === 0)) errors.push('Each column must have at least one value');
+    }
+    return errors.length > 0 ? { valid: false, errors } : { valid: true };
+  }
   if (format === 'contingency' && 'counts' in data && (analysisType === 'chi_square' || analysisType === 'fisher_exact')) {
     const c = data as ContingencyTableData;
     const total = c.counts.flat().reduce((a, b) => a + b, 0);
@@ -378,6 +488,8 @@ export function getDefaultOptions(
     | ContingencyTableData
     | SurvivalTableData
     | PartsOfWholeTableData
+    | MultipleVariablesTableData
+    | NestedTableData
 ): AnalysisOptions {
   if (analysisType === 'two_way_anova') {
     return { type: 'two_way_anova' };
@@ -434,6 +546,20 @@ export function getDefaultOptions(
   }
   if (analysisType === 'dose_response_4pl') {
     return { type: 'dose_response_4pl', logX: true };
+  }
+  if (analysisType === 'correlation') {
+    return { type: 'correlation' };
+  }
+  if (analysisType === 'multiple_regression' && format === 'multipleVariables' && 'variableLabels' in tableData) {
+    const labels = (tableData as MultipleVariablesTableData).variableLabels;
+    return { type: 'multiple_regression', yVariableLabel: labels[labels.length - 1] };
+  }
+  if (analysisType === 'nested_ttest' && format === 'nested' && 'groupLabels' in tableData && (tableData as NestedTableData).groupLabels?.length === 2) {
+    const nest = tableData as NestedTableData;
+    return { type: 'nested_ttest', groupLabels: [nest.groupLabels![0], nest.groupLabels![1]] };
+  }
+  if (analysisType === 'nested_one_way_anova') {
+    return { type: 'nested_one_way_anova' };
   }
   return { type: 'descriptive' };
 }

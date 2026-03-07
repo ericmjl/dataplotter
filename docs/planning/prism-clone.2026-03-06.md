@@ -34,7 +34,7 @@ The plan is informed by two living content sources in this repo. Use them during
 
 ### Guide pages (`scripts/prism_guide_pages/guide_pages/`)
 
-Downloaded Prism user guide (246 pages). Key topics that affect parity:
+Downloaded Prism user guide (246 pages). **Data tables section:** [Using Prism's data table](https://www.graphpad.com/guides/prism/latest/user-guide/using_prisms_data_table.htm) and recursively all child pages are in the scraped list; re-download with `--section data_tables`. These pages define the eight table types (XY, Column, Grouped, Contingency, Survival, Parts of whole, Multiple variables, Nested) and inform HLD/LLD/EARS. Key topics that affect parity:
 
 | Topic | What the guide says | Plan / EARS |
 |-------|---------------------|-------------|

@@ -12,6 +12,8 @@ import type {
   ContingencyTableData,
   SurvivalTableData,
   PartsOfWholeTableData,
+  MultipleVariablesTableData,
+  NestedTableData,
 } from '../types/project';
 import { getSchema } from './tableRegistry';
 import { getTransformById } from './transformRegistry';
@@ -31,7 +33,9 @@ export function getEffectiveTableData(
   | GroupedTableData
   | ContingencyTableData
   | SurvivalTableData
-  | PartsOfWholeTableData {
+  | PartsOfWholeTableData
+  | MultipleVariablesTableData
+  | NestedTableData {
   const data = table.data;
   const transformations = table.transformations;
   if (mode === 'raw' || !transformations?.length) {

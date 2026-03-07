@@ -6,6 +6,8 @@ import type {
   ContingencyTableData,
   SurvivalTableData,
   PartsOfWholeTableData,
+  MultipleVariablesTableData,
+  NestedTableData,
   AnalysisResult,
   GraphOptions,
 } from '../types';
@@ -109,7 +111,9 @@ export function buildPlotlySpec(
     | GroupedTableData
     | ContingencyTableData
     | SurvivalTableData
-    | PartsOfWholeTableData,
+    | PartsOfWholeTableData
+    | MultipleVariablesTableData
+    | NestedTableData,
   analysisResult: AnalysisResult | undefined,
   graphOptions: GraphOptions
 ): BuildPlotlyResult {

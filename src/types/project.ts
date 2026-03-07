@@ -28,7 +28,11 @@ export type AnalysisTypeId =
   | 'roc_auc'
   | 'normality_test'
   | 'linear_regression'
-  | 'dose_response_4pl';
+  | 'dose_response_4pl'
+  | 'correlation'
+  | 'multiple_regression'
+  | 'nested_ttest'
+  | 'nested_one_way_anova';
 
 export type GraphTypeId =
   | 'bar'
@@ -88,6 +92,20 @@ export interface PartsOfWholeTableData {
   values: number[];
 }
 
+/** One row per case, one column per variable. @spec PRISM-TBL-009 */
+export interface MultipleVariablesTableData {
+  variableLabels: string[];
+  rows: (number | null)[][];
+}
+
+/** Stacked replicates per subcolumn; optional outer grouping. @spec PRISM-TBL-010 */
+export interface NestedTableData {
+  columnLabels: string[];
+  rows: (number | null)[][];
+  groupLabels?: string[];
+  groupForColumn?: number[];
+}
+
 export interface DataTable {
   id: TableId;
   name: string;
@@ -98,7 +116,9 @@ export interface DataTable {
     | GroupedTableData
     | ContingencyTableData
     | SurvivalTableData
-    | PartsOfWholeTableData;
+    | PartsOfWholeTableData
+    | MultipleVariablesTableData
+    | NestedTableData;
   /** @spec TRANSFORM-001 Per-column transformation equations (Column and XY only). */
   transformations?: ColumnTransformation[];
   /** @spec TRANSFORM-004 Display mode for the table grid (raw vs transformed). */

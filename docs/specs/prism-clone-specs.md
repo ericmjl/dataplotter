@@ -4,6 +4,8 @@
 **Design**: [HLD](../high-level-design.md), [LLDs](../llds/)
 **Status markers**: `[x]` implemented, `[ ]` active gap, `[D]` deferred
 
+**Table types source:** [Prism: Using Prism's data table](https://www.graphpad.com/guides/prism/latest/user-guide/using_prisms_data_table.htm) and child pages (scraped via `scripts/prism_guide_pages` with `--section data_tables`). Prism defines eight kinds: XY, Column, Grouped, Contingency, Survival, Parts of whole, Multiple variables, Nested.
+
 ---
 
 ## Tables and formats (PRISM-TBL)
@@ -16,8 +18,8 @@
 - [x] **PRISM-TBL-006**: The system shall support the Survival table format (time + event per subject; optional group) with a defined data shape and registry entries.
 - [x] **PRISM-TBL-007**: The system shall support the Parts of whole table format (labels + values summing to a whole) with a defined data shape and registry entries.
 - [x] **PRISM-TBL-008**: Where a new table format is supported, the system shall provide schema and validation so that create/edit and save/load handle that format correctly.
-- [D] **PRISM-TBL-009**: The system shall support the Multiple variables table format (one row per case, one column per variable) with registry and analyses (correlation, multiple regression).
-- [D] **PRISM-TBL-010**: The system shall support the Nested table format (nested design; replicates in subcolumns).
+- [x] **PRISM-TBL-009**: The system shall support the Multiple variables table format (one row per case, one column per variable; Prism: correlation matrix, multiple regression, extract/rearrange) with registry and analyses.
+- [x] **PRISM-TBL-010**: The system shall support the Nested table format (hierarchical replication; Prism: nested t-test, nested one-way ANOVA, descriptive/normality/outlier per subcolumn).
 
 ---
 
@@ -93,14 +95,40 @@
 
 ---
 
+## New Data Table modal (PRISM-UI)
+
+The "New Data Table and Graph" modal shall replicate the Prism-style two-column layout: left sidebar for format selection, right content for format-specific description and options. Tutorial datasets are deferred.
+
+- [x] **PRISM-UI-001**: The system shall present a modal titled "New Data Table and Graph" with a two-column layout: a left sidebar (dark background) listing table formats and an "EXISTING FILE" section, and a right main content area that updates when the user selects a format.
+- [x] **PRISM-UI-002**: The left sidebar shall list under "NEW TABLE & GRAPH" all eight formats in order: XY, Column, Grouped, Contingency, Survival, Parts of whole, Multiple variables, Nested. The selected format shall be visually highlighted. Under "EXISTING FILE" the system shall show "Clone a Graph" (behavior may be deferred).
+- [x] **PRISM-UI-003**: For each selected format, the right panel shall show: (a) a short format-specific description, (b) an optional visual example (table and/or graph preview), (c) a "Learn more" link (placeholder href or no-op), (d) a "Data table:" section with two radio options: "Enter or import data into a new table" and "Start with sample data to follow a tutorial". Tutorial dataset list is not implemented initially; "Start with sample data" may be disabled or hidden.
+- [x] **PRISM-UI-004**: The modal shall include footer buttons: "Cancel" (dismiss without creating) and "Create" (primary; create table with selected format and current options). Creation logic shall remain as in the existing NewTableDialog (name, format-specific fields).
+- [x] **PRISM-UI-005**: Format-specific creation fields (column labels, X/Y labels, group definitions, etc.) shall remain available in the right panel when "Enter or import data into a new table" is selected, consistent with current behavior per format.
+
+### Implementation plan (parallel subagents)
+
+Work is split so subagents can run in parallel with minimal overlap:
+
+| Subagent | Scope | Deliverable |
+|----------|--------|-------------|
+| **Layout** | Modal shell, two-column CSS, sidebar nav (format list + EXISTING FILE), footer Cancel/Create. Single component structure; no format-specific content. | Updated `NewTableDialog.tsx` structure and new CSS classes (e.g. `new-table-modal`, `new-table-sidebar`, `new-table-content`). |
+| **Content A** | Right-panel content for **XY, Column, Grouped**: description text, optional mini table/graph placeholder, "Data table" radios, "Learn more" link. Copy for each of the three formats. | Format-specific description and UI blocks for XY, Column, Grouped (data-driven or inline). |
+| **Content B** | Right-panel content for **Contingency, Survival, Parts of whole**: same as Content A. | Format-specific description and UI blocks for Contingency, Survival, Parts of whole. |
+| **Content C** | Right-panel content for **Multiple variables, Nested**: same as Content A. | Format-specific description and UI blocks for Multiple variables, Nested. |
+
+**Integration:** After Layout and Content A/B/C are done, merge into one `NewTableDialog`: sidebar sets `format` state; right panel renders the content for that format and includes existing creation fields (name, column labels, etc.) and submit handler. Tutorial datasets: do not implement; "Start with sample data" can be present but disabled or hidden.
+
+---
+
 ## Traceability summary
 
-| Area    | Implemented | Active gap | Deferred |
-|---------|-------------|------------|----------|
-| TBL     | 8           | 0          | 2        |
-| ANA     | 14          | 0          | 0        |
-| GPH     | 10          | 0          | 0        |
-| WKF     | 10          | 0          | 2        |
-| TRANSFORM | 9         | 0          | 0        |
+| Area      | Implemented | Active gap | Deferred |
+|-----------|-------------|------------|----------|
+| TBL       | 8           | 0          | 2        |
+| ANA       | 14          | 0          | 0        |
+| GPH       | 10          | 0          | 0        |
+| WKF       | 10          | 0          | 2        |
+| TRANSFORM | 9           | 0          | 0        |
+| UI (modal)| 5           | 0          | 0        |
 
 Implementation plans in `docs/planning/` should reference these spec IDs by phase.

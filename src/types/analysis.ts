@@ -180,6 +180,41 @@ export type AnalysisResult =
       bottomCI?: [number, number];
       topCI?: [number, number];
       hillSlopeCI?: [number, number];
+    }
+  | {
+      /** @spec PRISM-TBL-009 Correlation matrix (Multiple variables). */
+      type: 'correlation';
+      labels: string[];
+      r: number[][];
+      n: number[][];
+    }
+  | {
+      /** @spec PRISM-TBL-009 Multiple linear regression (Multiple variables). */
+      type: 'multiple_regression';
+      r2: number;
+      coefficients: { label: string; coef: number; se?: number }[];
+      yLabel: string;
+    }
+  | {
+      /** @spec PRISM-TBL-010 Nested t-test (Nested table). */
+      type: 'nested_ttest';
+      t: number;
+      p: number;
+      df: number;
+      mean1: number;
+      mean2: number;
+      ci: [number, number];
+      label1: string;
+      label2: string;
+    }
+  | {
+      /** @spec PRISM-TBL-010 Nested one-way ANOVA (Nested table). */
+      type: 'nested_one_way_anova';
+      f: number;
+      p: number;
+      dfBetween: number;
+      dfWithin: number;
+      groupMeans: { label: string; mean: number }[];
     };
 
 export interface DescriptiveOptions {
@@ -252,6 +287,24 @@ export interface DoseResponse4plOptions {
   logX: boolean;
 }
 
+export interface CorrelationOptions {
+  type: 'correlation';
+}
+
+export interface MultipleRegressionOptions {
+  type: 'multiple_regression';
+  yVariableLabel?: string;
+}
+
+export interface NestedTtestOptions {
+  type: 'nested_ttest';
+  groupLabels?: [string, string];
+}
+
+export interface NestedOneWayAnovaOptions {
+  type: 'nested_one_way_anova';
+}
+
 /** @spec TRANSFORM-005 Optional data mode (raw vs transformed) for all analysis types. */
 export type AnalysisOptions =
   | (DescriptiveOptions & { dataMode?: 'raw' | 'transformed' })
@@ -268,4 +321,8 @@ export type AnalysisOptions =
   | (RocAucOptions & { dataMode?: 'raw' | 'transformed' })
   | (NormalityTestOptions & { dataMode?: 'raw' | 'transformed' })
   | (LinearRegressionOptions & { dataMode?: 'raw' | 'transformed' })
-  | (DoseResponse4plOptions & { dataMode?: 'raw' | 'transformed' });
+  | (DoseResponse4plOptions & { dataMode?: 'raw' | 'transformed' })
+  | (CorrelationOptions & { dataMode?: 'raw' | 'transformed' })
+  | (MultipleRegressionOptions & { dataMode?: 'raw' | 'transformed' })
+  | (NestedTtestOptions & { dataMode?: 'raw' | 'transformed' })
+  | (NestedOneWayAnovaOptions & { dataMode?: 'raw' | 'transformed' });

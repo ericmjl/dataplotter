@@ -8,6 +8,8 @@ import type {
   ContingencyTableData,
   SurvivalTableData,
   PartsOfWholeTableData,
+  MultipleVariablesTableData,
+  NestedTableData,
   AnalysisResult,
   AnalysisOptions,
 } from '../../types';
@@ -26,21 +28,29 @@ import { runRocAuc } from './rocAuc';
 import { runNormalityTest } from './normalityTest';
 import { runLinearRegression } from './regression';
 import { runDoseResponse4pl } from './doseResponse4pl';
+import { runCorrelation } from './correlation';
+import { runMultipleRegression } from './multipleRegression';
+import { runNestedTtest } from './nestedTtest';
+import { runNestedOneWayAnova } from './nestedOneWayAnova';
 import { addDescriptiveBayesianFields } from '../bayesian/descriptive';
 import { getPyodide, runDescriptivePyMC } from '../pymc/descriptive';
 import { runRegressionPyMC } from '../pymc/regression';
 import { runDoseResponse4plPyMC } from '../pymc/doseResponse4pl';
 
+export type TableDataForAnalysis =
+  | ColumnTableData
+  | XYTableData
+  | GroupedTableData
+  | ContingencyTableData
+  | SurvivalTableData
+  | PartsOfWholeTableData
+  | MultipleVariablesTableData
+  | NestedTableData;
+
 export function runAnalysis(
   format: TableFormatId,
   analysisType: AnalysisTypeId,
-  tableData:
-    | ColumnTableData
-    | XYTableData
-    | GroupedTableData
-    | ContingencyTableData
-    | SurvivalTableData
-    | PartsOfWholeTableData,
+  tableData: TableDataForAnalysis,
   options: AnalysisOptions
 ): Result<AnalysisResult> {
   const validation = validateForAnalysis(format, tableData, analysisType);
@@ -49,19 +59,38 @@ export function runAnalysis(
   }
 
   if (analysisType === 'descriptive') {
-    if (format !== 'column' || !('columnLabels' in tableData) || 'counts' in tableData) {
-      return { ok: false, error: 'Descriptive analysis requires column table.' };
+    if (format === 'column' && 'columnLabels' in tableData && !('counts' in tableData)) {
+      const colData = tableData as ColumnTableData;
+      return {
+        ok: true,
+        value: runDescriptive(
+          colData.columnLabels,
+          colData.rows,
+          colData.groupLabels,
+          colData.groupForColumn
+        ),
+      };
     }
-    const colData = tableData as ColumnTableData;
-    return {
-      ok: true,
-      value: runDescriptive(
-        colData.columnLabels,
-        colData.rows,
-        colData.groupLabels,
-        colData.groupForColumn
-      ),
-    };
+    if (format === 'multipleVariables' && 'variableLabels' in tableData) {
+      const mv = tableData as MultipleVariablesTableData;
+      return {
+        ok: true,
+        value: runDescriptive(mv.variableLabels, mv.rows, undefined, undefined),
+      };
+    }
+    if (format === 'nested' && 'columnLabels' in tableData && !('counts' in tableData)) {
+      const nested = tableData as NestedTableData;
+      return {
+        ok: true,
+        value: runDescriptive(
+          nested.columnLabels,
+          nested.rows,
+          nested.groupLabels,
+          nested.groupForColumn
+        ),
+      };
+    }
+    return { ok: false, error: 'Descriptive analysis requires column, multiple variables, or nested table.' };
   }
 
   if (analysisType === 'unpaired_ttest') {
@@ -243,6 +272,71 @@ export function runAnalysis(
     };
   }
 
+  if (analysisType === 'correlation') {
+    if (format !== 'multipleVariables' || !('variableLabels' in tableData)) {
+      return { ok: false, error: 'Correlation requires multiple variables table.' };
+    }
+    const mv = tableData as MultipleVariablesTableData;
+    return { ok: true, value: runCorrelation(mv.variableLabels, mv.rows) };
+  }
+
+  if (analysisType === 'multiple_regression') {
+    if (format !== 'multipleVariables' || !('variableLabels' in tableData)) {
+      return { ok: false, error: 'Multiple regression requires multiple variables table.' };
+    }
+    const mv = tableData as MultipleVariablesTableData;
+    const opts = options as { type: 'multiple_regression'; yVariableLabel?: string };
+    return {
+      ok: true,
+      value: runMultipleRegression(mv.variableLabels, mv.rows, opts.yVariableLabel),
+    };
+  }
+
+  if (analysisType === 'nested_ttest') {
+    if (format !== 'nested' || !('columnLabels' in tableData) || !('groupForColumn' in tableData)) {
+      return { ok: false, error: 'Nested t-test requires nested table with group assignments.' };
+    }
+    const nested = tableData as NestedTableData;
+    const groupForColumn = nested.groupForColumn ?? nested.columnLabels.map(() => 0);
+    const groupLabels = (options as { type: 'nested_ttest'; groupLabels?: [string, string] }).groupLabels ??
+      (nested.groupLabels && nested.groupLabels.length >= 2
+        ? [nested.groupLabels[0]!, nested.groupLabels[1]!]
+        : ['Group 1', 'Group 2']);
+    if (groupForColumn.length !== nested.columnLabels.length) {
+      return { ok: false, error: 'groupForColumn length must match number of columns.' };
+    }
+    return {
+      ok: true,
+      value: runNestedTtest(
+        nested.columnLabels,
+        nested.rows,
+        groupLabels,
+        groupForColumn
+      ),
+    };
+  }
+
+  if (analysisType === 'nested_one_way_anova') {
+    if (format !== 'nested' || !('columnLabels' in tableData)) {
+      return { ok: false, error: 'Nested one-way ANOVA requires nested table.' };
+    }
+    const nested = tableData as NestedTableData;
+    const groupForColumn = nested.groupForColumn ?? nested.columnLabels.map((_, i) => i);
+    const groupLabels = nested.groupLabels ?? nested.columnLabels.map((_, i) => `Group ${i + 1}`);
+    if (groupForColumn.length !== nested.columnLabels.length) {
+      return { ok: false, error: 'groupForColumn length must match number of columns.' };
+    }
+    return {
+      ok: true,
+      value: runNestedOneWayAnova(
+        nested.columnLabels,
+        nested.rows,
+        groupLabels,
+        groupForColumn
+      ),
+    };
+  }
+
   return { ok: false, error: `Unknown analysis type: ${analysisType}` };
 }
 
@@ -255,13 +349,7 @@ export function runAnalysis(
 export async function runAnalysisAsync(
   format: TableFormatId,
   analysisType: AnalysisTypeId,
-  tableData:
-    | ColumnTableData
-    | XYTableData
-    | GroupedTableData
-    | ContingencyTableData
-    | SurvivalTableData
-    | PartsOfWholeTableData,
+  tableData: TableDataForAnalysis,
   options: AnalysisOptions
 ): Promise<Result<AnalysisResult>> {
   const validation = validateForAnalysis(format, tableData, analysisType);
@@ -270,8 +358,38 @@ export async function runAnalysisAsync(
   }
 
   if (analysisType === 'descriptive') {
+    if (format === 'multipleVariables' && 'variableLabels' in tableData) {
+      const mv = tableData as MultipleVariablesTableData;
+      const base = runDescriptive(mv.variableLabels, mv.rows, undefined, undefined);
+      if (base.type !== 'descriptive') return { ok: true, value: base };
+      try {
+        const pyodide = await getPyodide();
+        if (pyodide) {
+          const columnValues = mv.variableLabels.map((_, c) =>
+            mv.rows
+              .map((r) => r[c])
+              .filter((v): v is number => v != null && Number.isFinite(v))
+          );
+          const bayesianRows = await runDescriptivePyMC(pyodide, mv.variableLabels, columnValues);
+          const byColumn = base.byColumn.map((col, i) => ({
+            ...col,
+            meanCrI: bayesianRows[i]?.meanCrI,
+            meanSD: bayesianRows[i]?.meanSD,
+          }));
+          return { ok: true, value: { type: 'descriptive', byColumn } };
+        }
+      } catch (_) {
+        // fall through
+      }
+      return { ok: true, value: addDescriptiveBayesianFields(base) as AnalysisResult };
+    }
+    if (format === 'nested' && 'columnLabels' in tableData && !('counts' in tableData)) {
+      return Promise.resolve(
+        runAnalysis(format, 'descriptive', tableData, options)
+      );
+    }
     if (format !== 'column' || !('columnLabels' in tableData) || 'counts' in tableData) {
-      return { ok: false, error: 'Descriptive analysis requires column table.' };
+      return { ok: false, error: 'Descriptive analysis requires column, multiple variables, or nested table.' };
     }
     const colData = tableData as ColumnTableData;
     const base = runDescriptive(

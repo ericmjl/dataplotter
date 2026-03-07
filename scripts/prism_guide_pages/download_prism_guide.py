@@ -27,6 +27,54 @@ from bs4 import BeautifulSoup
 
 BASE = "https://www.graphpad.com/guides/prism/latest"
 
+# Data tables section: https://www.graphpad.com/guides/prism/latest/user-guide/using_prisms_data_table.htm
+# and recursively all child pages (eight kinds, creating, format, etc.). Stems = filename without .htm.
+DATA_TABLES_SECTION_STEMS = [
+    "using_prisms_data_table",
+    "distinguishing_the_six_kinds_o",
+    "using_key_concepts_data_tables",
+    "using_key_concepts___data_tables",
+    "using_data_table_format",
+    "creating_data_tables",
+    "using_which_table_should_i_use_to_cr",
+    "xy_table",
+    "column_tables",
+    "two_grouping_variable_table",
+    "contingency_table",
+    "stacked_vs_side-by-side_repli",
+    "stacked_vs__side-by-side_repli",
+    "survival_table",
+    "about_parts_of_whole",
+    "multiple-variable-tables",
+    "nested-tables",
+    "the-difference-between-nested-",
+    "data_table_limits",
+    "editing_data_tables",
+    "using_changing_a_data_table_format",
+    "makeanothertable",
+    "bar_graphs",
+    "column_titles",
+    "subcolumn_titles",
+    "use_of_row_titles_in_xy_graphs",
+    "using_sorting_data",
+    "column_widths",
+    "using_decimal_format",
+    "excluding_values",
+    "deleting_or_removing_entire_da",
+    "missing_values",
+    "data_objects",
+    "rounding",
+    "mv_how_mv_are_different",
+    "mv_variable_types",
+    "mv_format_data_table",
+    "mv_data_table_row_labels",
+    "nested-tables2",
+    "creating_a_table_to_combine_ba",
+    "inserting_a_series",
+    "xy_tables_x_represents_dates",
+    "xy_tables__x_represents_dates_",
+]
+
 # Sitemap and print-window paths per guide (latest redirects to a versioned path; sitemap may be versioned)
 GUIDES = {
     "user-guide": {
@@ -166,6 +214,12 @@ def main() -> None:
         default=0,
         help="If set, only download this many pages per guide (for testing).",
     )
+    parser.add_argument(
+        "--section",
+        choices=["data_tables"],
+        default=None,
+        help="If set, only download pages in this section (e.g. data_tables = using_prisms_data_table.htm and child pages).",
+    )
     args = parser.parse_args()
 
     if args.guides == "ALL":
@@ -173,6 +227,11 @@ def main() -> None:
     else:
         key_map = {"USER": "user-guide", "STAT": "statistics", "CURVE": "curve-fitting"}
         keys = [key_map[args.guides]]
+
+    def url_stem(url: str) -> str:
+        path = urlparse(url).path.rstrip("/")
+        filename = path.rsplit("/", 1)[-1] if "/" in path else path
+        return filename.replace(".htm", "") if filename.endswith(".htm") else filename
 
     total_saved = 0
     for key in keys:
@@ -183,6 +242,11 @@ def main() -> None:
         if not urls:
             print("  No pages found.")
             continue
+
+        if args.section == "data_tables":
+            stems_set = set(DATA_TABLES_SECTION_STEMS)
+            urls = [u for u in urls if url_stem(u) in stems_set]
+            print(f"  Section filter: data_tables -> {len(urls)} pages")
 
         # Subdir per guide
         subdir = args.out_dir / key.replace("-", "_")

@@ -1,14 +1,14 @@
 # LLD: Data tables and table formats
 
 **Created**: 2026-03-06  
-**Status**: Implemented (Column, XY, Grouped, Contingency, Survival, Parts of whole)  
-**References**: [HLD](../high-level-design.md), [project layout](../reference/project-layout.md)
+**Status**: Implemented (Column, XY, Grouped, Contingency, Survival, Parts of whole); Multiple variables and Nested specified, deferred.  
+**References**: [HLD](../high-level-design.md), [project layout](../reference/project-layout.md), [Prism: Using Prism's data table](https://www.graphpad.com/guides/prism/latest/user-guide/using_prisms_data_table.htm) and scraped child pages (`scripts/prism_guide_pages` with `--section data_tables`).
 
 ---
 
 ## Context and design philosophy
 
-Table format drives which analyses and graph types the system offers. Prism supports eight formats; dataplotter currently implements two (Column, XY) with full stack. Full analysis parity (HLD) means that for each supported format, the clone will offer all Prism analyses applicable to that format. This LLD defines how to add and maintain formats so that registry, engine, and UI stay in sync (see how-to: [add a graph type](../how-to-guides/how-to-add-a-graph-type.md), [add an analysis type](../how-to-guides/how-to-add-an-analysis-type.md)). Each new format must have a defined data shape, schema/validation, allowed analyses and graph types, and a way to create/edit tables of that format.
+Table format drives which analyses and graph types the system offers. **Prism supports eight kinds of data tables** (see [Distinguishing the eight kinds](https://www.graphpad.com/guides/prism/latest/user-guide/distinguishing_the_six_kinds_o.htm)); the clone shall support all eight. Full analysis parity (HLD) means that for each supported format, the clone will offer all Prism analyses applicable to that format. This LLD defines how to add and maintain formats so that registry, engine, and UI stay in sync (see how-to: [add a graph type](../how-to-guides/how-to-add-a-graph-type.md), [add an analysis type](../how-to-guides/how-to-add-an-analysis-type.md)). Each new format must have a defined data shape, schema/validation, allowed analyses and graph types, and a way to create/edit tables of that format. Design is informed by the scraped Prism user guide (Data tables section).
 
 ---
 
@@ -24,16 +24,18 @@ Table format drives which analyses and graph types the system offers. Prism supp
 
 ## Table format catalog (target)
 
-| Format ID | Data shape | Purpose | Status |
-|-----------|------------|---------|--------|
-| column | ColumnTableData | One grouping variable; replicates per column | ✅ Implemented |
-| xy | XYTableData | X + one or more Y series | ✅ Implemented |
-| grouped | GroupedTableData | Two grouping variables (rowGroupLabels × colGroupLabels); cellValues[row][col] = replicates | ✅ Implemented |
-| contingency | ContingencyTableData | Integer counts; rowLabels, columnLabels, counts[][] | ✅ Implemented |
-| survival | SurvivalTableData | Time + event; optional group; one row per subject | ✅ Implemented |
-| partsOfWhole | PartsOfWholeTableData | labels[], values[] (sum to whole) | ✅ Implemented |
-| multipleVariables | MultipleVariablesTableData (new) | One row per case, one column per variable | P3 / deferred |
-| nested | (TBD) | Nested design | Deferred |
+Per the [Prism user guide](https://www.graphpad.com/guides/prism/latest/user-guide/using_data_table_format.htm), the eight kinds are:
+
+| Format ID | Data shape | Purpose (from Prism guide) | Status |
+|-----------|------------|----------------------------|--------|
+| column | ColumnTableData | One grouping variable; each column defines a group (e.g. control vs. treated). Replicates per column; Prism computes error bars. | ✅ Implemented |
+| xy | XYTableData | Every point defined by X and Y; one X column, one or more Y data sets; subcolumns for replicates or error. Used for regression, curve fit. | ✅ Implemented |
+| grouped | GroupedTableData | Two grouping variables (rows × columns); e.g. male vs. female × control vs. treated. cellValues[row][col] = replicates. | ✅ Implemented |
+| contingency | ContingencyTableData | Actual counts of subjects/observations in categories (rows × columns). Integer counts only; Chi-square, Fisher's exact. | ✅ Implemented |
+| survival | SurvivalTableData | One row per subject; time (X) and event code (Y: 1 = event, 0 = censored). Kaplan–Meier, log-rank, Gehan–Wilcoxon. | ✅ Implemented |
+| partsOfWhole | PartsOfWholeTableData | Values that are fractions of a whole; labels + values. Fraction of total, Chi-square goodness of fit; pie charts. | ✅ Implemented |
+| multipleVariables | MultipleVariablesTableData (new) | One row per case (e.g. subject), one column per variable; no subcolumns. Correlation matrix, multiple regression, extract/rearrange. | [D] Deferred |
+| nested | NestedTableData (TBD) | Two levels of nested/hierarchical replication (e.g. rats within treatment, repeated measures per rat). Nested t-test, nested one-way ANOVA. | [D] Deferred |
 
 ---
 
@@ -111,4 +113,4 @@ Adding a format requires: (1) extend `project.ts` if the format ID already exist
 - `src/types/project.ts` — TableFormatId, ColumnTableData, XYTableData
 - `src/lib/tableRegistry.ts` — schema, validation, allowed analyses/graphs
 - `src/components/NewTableDialog.tsx`, `TableView.tsx`, `DataGrid.tsx`
-- Prism user guide (downloaded): table types and when to use each
+- **Prism user guide (scraped):** [Using Prism's data table](https://www.graphpad.com/guides/prism/latest/user-guide/using_prisms_data_table.htm) and child pages. Re-download with `uv run scripts/prism_guide_pages/download_prism_guide.py --section data_tables`. Key pages: distinguishing_the_six_kinds_o (eight kinds), creating_data_tables, column_tables, xy_table, two_grouping_variable_table, contingency_table, survival_table, about_parts_of_whole, multiple-variable-tables, nested-tables.

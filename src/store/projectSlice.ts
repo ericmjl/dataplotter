@@ -12,6 +12,8 @@ import type {
   ContingencyTableData,
   SurvivalTableData,
   PartsOfWholeTableData,
+  MultipleVariablesTableData,
+  NestedTableData,
   AnalysisResult,
 } from '../types';
 import type { ColumnTransformation, TableViewMode } from '../types/transformations';
@@ -50,6 +52,8 @@ export interface ProjectActions {
       | ContingencyTableData
       | SurvivalTableData
       | PartsOfWholeTableData
+      | MultipleVariablesTableData
+      | NestedTableData
   ) => void;
   /** Remove a column (Column table: any column; XY table: a Y series). Clears analyses for that table. */
   removeTableColumn: (tableId: string, columnKey: string) => void;
@@ -161,6 +165,8 @@ export function createProjectSlice(
         | ContingencyTableData
         | SurvivalTableData
         | PartsOfWholeTableData
+        | MultipleVariablesTableData
+        | NestedTableData
     ) => {
       set((state) => {
         const tables = state.project.tables.map((t) =>
@@ -231,6 +237,26 @@ export function createProjectSlice(
               return t;
             })
             .filter((t): t is ColumnTransformation => t !== null);
+        } else if (table.format === 'multipleVariables' && 'variableLabels' in table.data) {
+          const d = table.data as MultipleVariablesTableData;
+          const match = /^col-(\d+)$/.exec(columnKey);
+          const colIdx = match ? parseInt(match[1], 10) : -1;
+          if (colIdx < 0 || colIdx >= d.variableLabels.length || d.variableLabels.length <= 1) return {};
+          newData = {
+            variableLabels: d.variableLabels.filter((_, i) => i !== colIdx),
+            rows: d.rows.map((row) => row.filter((_, i) => i !== colIdx)),
+          };
+        } else if (table.format === 'nested' && 'columnLabels' in table.data && !('variableLabels' in table.data)) {
+          const d = table.data as NestedTableData;
+          const match = /^col-(\d+)$/.exec(columnKey);
+          const colIdx = match ? parseInt(match[1], 10) : -1;
+          if (colIdx < 0 || colIdx >= d.columnLabels.length || d.columnLabels.length <= 1) return {};
+          newData = {
+            ...d,
+            columnLabels: d.columnLabels.filter((_, i) => i !== colIdx),
+            rows: d.rows.map((row) => row.filter((_, i) => i !== colIdx)),
+            groupForColumn: d.groupForColumn?.filter((_, i) => i !== colIdx),
+          };
         } else {
           return {};
         }

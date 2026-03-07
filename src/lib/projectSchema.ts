@@ -42,6 +42,18 @@ const PartsOfWholeTableDataSchema = z.object({
   values: z.array(z.number()),
 });
 
+const MultipleVariablesTableDataSchema = z.object({
+  variableLabels: z.array(z.string()),
+  rows: z.array(z.array(z.union([z.number(), z.null()]))),
+});
+
+const NestedTableDataSchema = z.object({
+  columnLabels: z.array(z.string()),
+  rows: z.array(z.array(z.union([z.number(), z.null()]))),
+  groupLabels: z.array(z.string()).optional(),
+  groupForColumn: z.array(z.number()).optional(),
+});
+
 const ColumnTransformationSchema = z.object({
   columnKey: z.string(),
   transformId: z.string(),
@@ -58,6 +70,8 @@ const DataTableSchema = z.object({
     ContingencyTableDataSchema,
     SurvivalTableDataSchema,
     PartsOfWholeTableDataSchema,
+    MultipleVariablesTableDataSchema,
+    NestedTableDataSchema,
   ]),
   transformations: z.array(ColumnTransformationSchema).optional(),
   viewMode: z.enum(['raw', 'transformed']).optional(),
@@ -216,6 +230,41 @@ const DoseResponse4plResultSchema = z.object({
   curve: z.object({ x: z.array(z.number()), y: z.array(z.number()) }),
 });
 
+const CorrelationResultSchema = z.object({
+  type: z.literal('correlation'),
+  labels: z.array(z.string()),
+  r: z.array(z.array(z.number())),
+  n: z.array(z.array(z.number())),
+});
+
+const MultipleRegressionResultSchema = z.object({
+  type: z.literal('multiple_regression'),
+  r2: z.number(),
+  coefficients: z.array(z.object({ label: z.string(), coef: z.number(), se: z.number().optional() })),
+  yLabel: z.string(),
+});
+
+const NestedTtestResultSchema = z.object({
+  type: z.literal('nested_ttest'),
+  t: z.number(),
+  p: z.number(),
+  df: z.number(),
+  mean1: z.number(),
+  mean2: z.number(),
+  ci: z.tuple([z.number(), z.number()]),
+  label1: z.string(),
+  label2: z.string(),
+});
+
+const NestedOneWayAnovaResultSchema = z.object({
+  type: z.literal('nested_one_way_anova'),
+  f: z.number(),
+  p: z.number(),
+  dfBetween: z.number(),
+  dfWithin: z.number(),
+  groupMeans: z.array(z.object({ label: z.string(), mean: z.number() })),
+});
+
 const AnalysisResultSchema = z.discriminatedUnion('type', [
   DescriptiveResultSchema,
   UnpairedTtestResultSchema,
@@ -232,6 +281,10 @@ const AnalysisResultSchema = z.discriminatedUnion('type', [
   NormalityTestResultSchema,
   LinearRegressionResultSchema,
   DoseResponse4plResultSchema,
+  CorrelationResultSchema,
+  MultipleRegressionResultSchema,
+  NestedTtestResultSchema,
+  NestedOneWayAnovaResultSchema,
 ]);
 
 const AnalysisSchema = z.object({
