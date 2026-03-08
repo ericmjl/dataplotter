@@ -31,7 +31,8 @@ const ContingencyTableDataSchema = z.object({
 const SurvivalTableDataSchema = z.object({
   timeLabel: z.string(),
   eventLabel: z.string(),
-  groupLabel: z.string().optional(),
+  subjectLabels: z.array(z.string()).optional(),
+  groupLabels: z.array(z.string()).optional(),
   times: z.array(z.number()),
   events: z.array(z.number()),
   groups: z.array(z.string()).optional(),

@@ -140,12 +140,17 @@ describe('tableRegistry', () => {
       const schema = getSchema('survival', {
         timeLabel: 'T',
         eventLabel: 'E',
+        groupLabels: ['A', 'B'],
         times: [1, 2],
         events: [1, 0],
         groups: ['A', 'B'],
       });
       expect(schema.columns).toHaveLength(3);
-      expect(schema.columns[2].id).toBe('group');
+      expect(schema.columns[0].label).toBe('T');
+      expect(schema.columns[1].id).toBe('group-0');
+      expect(schema.columns[1].label).toBe('A');
+      expect(schema.columns[2].id).toBe('group-1');
+      expect(schema.columns[2].label).toBe('B');
     });
 
     it('returns schema for grouped and contingency with data', () => {

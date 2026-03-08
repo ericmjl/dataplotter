@@ -25,6 +25,7 @@ This file gives **rules and conventions** for AI coding agents and human develop
    - Write the minimal implementation to make the test pass (green).
    - Refactor if needed, keeping tests green.
 3. **Validate:** After implementation, run `npm test` and `npm run build` to ensure nothing is broken.
+4. **Mark EARS done:** At the end of any implementation, review [docs/specs/prism-clone-specs.md](docs/specs/prism-clone-specs.md) and mark any requirements you implemented as done (e.g. with `[x]`).
 
 **Reference:**
 - [HLD](docs/high-level-design.md) — System architecture and goals.
@@ -57,7 +58,7 @@ This file gives **rules and conventions** for AI coding agents and human develop
 
 ### Testing and quality
 
-- **Before claiming “done”:** Run `npm run build` and, if you changed logic or lib code, `npm test`. Fix any new type or lint errors.
+- **Before claiming “done”:** Run `npm run build` and, if you changed logic or lib code, `npm test`. Fix any new type or lint errors. Review the [EARS](docs/specs/prism-clone-specs.md) and mark any implemented requirements as done.
 - **Tests:** Vitest; test files next to source (`*.test.ts`). Prefer testing engine and lib code; UI tests only where they add clear value.
 
 ### Documentation

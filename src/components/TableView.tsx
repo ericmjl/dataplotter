@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../store';
 import { getSchema, validateTableData, getAllowedAnalyses, getAllowedGraphTypes, getDefaultOptions } from '../lib/tableRegistry';
 import type { TableSchema } from '../lib/tableRegistry';
@@ -90,6 +90,174 @@ function TidyTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function parseEventVal(s: string): 0 | 1 {
+  const t = s.trim();
+  if (t === '' || t === '0') return 0;
+  return t === '1' ? 1 : 0;
+}
+
+function SurvivalTidyTable({
+  data,
+  onDataChange,
+  'aria-label': ariaLabel = 'Survival data (tidy)',
+}: {
+  data: SurvivalTableData;
+  onDataChange: (data: SurvivalTableData) => void;
+  'aria-label'?: string;
+}) {
+  const [local, setLocal] = useState<SurvivalTableData>(data);
+  useEffect(() => { setLocal(data); }, [data]);
+
+  const commit = useCallback(() => onDataChange(local), [local, onDataChange]);
+  const n = local.times.length;
+  const groupLabels = local.groupLabels ?? [];
+
+  const setSubject = useCallback((i: number, v: string) => {
+    setLocal((prev) => {
+      const next = [...(prev.subjectLabels ?? [])];
+      while (next.length < prev.times.length) next.push('');
+      next[i] = v;
+      return { ...prev, subjectLabels: next };
+    });
+  }, []);
+
+  const setTime = useCallback((i: number, v: number) => {
+    setLocal((prev) => {
+      const times = [...prev.times];
+      times[i] = v;
+      return { ...prev, times };
+    });
+  }, []);
+
+  const setGroup = useCallback((i: number, v: string) => {
+    setLocal((prev) => {
+      const groups = [...(prev.groups ?? [])];
+      while (groups.length < prev.times.length) groups.push(groupLabels[0] ?? '');
+      groups[i] = v.trim();
+      return { ...prev, groups };
+    });
+  }, [groupLabels]);
+
+  const setEvent = useCallback((i: number, v: 0 | 1) => {
+    setLocal((prev) => {
+      const events = [...prev.events];
+      events[i] = v;
+      return { ...prev, events };
+    });
+  }, []);
+
+  const addRow = useCallback(() => {
+    setLocal((prev) => ({
+      ...prev,
+      times: [...prev.times, 0],
+      events: [...prev.events, 0],
+      groups: [...(prev.groups ?? []), groupLabels[0] ?? ''],
+      subjectLabels: [...(prev.subjectLabels ?? []), ''],
+    }));
+  }, [groupLabels]);
+
+  const removeRow = useCallback((i: number) => {
+    setLocal((prev) => ({
+      ...prev,
+      times: prev.times.filter((_, idx) => idx !== i),
+      events: prev.events.filter((_, idx) => idx !== i),
+      groups: prev.groups?.filter((_, idx) => idx !== i),
+      subjectLabels: prev.subjectLabels?.filter((_, idx) => idx !== i),
+    }));
+  }, []);
+
+  return (
+    <div className="data-grid-wrap">
+      <table className="data-grid data-grid-tidy survival-tidy-editable" aria-label={ariaLabel}>
+        <thead>
+          <tr>
+            <th scope="col">Subject</th>
+            <th scope="col">{local.timeLabel}</th>
+            <th scope="col">Group</th>
+            <th scope="col">{local.eventLabel}</th>
+            <th scope="col" style={{ width: '2rem' }} aria-hidden="true" />
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: n }, (_, i) => (
+            <tr key={i}>
+              <td>
+                <input
+                  type="text"
+                  className="cell-input"
+                  value={local.subjectLabels?.[i] ?? ''}
+                  onChange={(e) => setSubject(i, e.target.value)}
+                  onBlur={commit}
+                  placeholder={`e.g. Mouse ${i + 1}`}
+                  aria-label={`Row ${i + 1}, subject`}
+                />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  className="cell-input"
+                  value={local.times[i] ?? ''}
+                  onChange={(e) => setTime(i, Number(e.target.value) || 0)}
+                  onBlur={commit}
+                  aria-label={`Row ${i + 1}, ${local.timeLabel}`}
+                />
+              </td>
+              <td>
+                {groupLabels.length > 0 ? (
+                  <select
+                    className="cell-input"
+                    value={local.groups?.[i] ?? ''}
+                    onChange={(e) => setGroup(i, e.target.value)}
+                    onBlur={commit}
+                    aria-label={`Row ${i + 1}, group`}
+                  >
+                    {groupLabels.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    className="cell-input"
+                    value={local.groups?.[i] ?? ''}
+                    onChange={(e) => setGroup(i, e.target.value)}
+                    onBlur={commit}
+                    placeholder="Group"
+                    aria-label={`Row ${i + 1}, group`}
+                  />
+                )}
+              </td>
+              <td>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className="cell-input"
+                  value={local.events[i] === 1 ? '1' : '0'}
+                  onChange={(e) => {
+                    const v = parseEventVal(e.target.value);
+                    setEvent(i, v);
+                  }}
+                  onBlur={commit}
+                  placeholder="0/1"
+                  aria-label={`Row ${i + 1}, ${local.eventLabel}`}
+                />
+              </td>
+              <td>
+                <button type="button" className="btn-ghost" onClick={() => removeRow(i)} aria-label="Remove row">×</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="survival-grid-actions">
+        <button type="button" className="btn-ghost" onClick={addRow}>+ Add row</button>
+      </div>
     </div>
   );
 }
@@ -439,7 +607,7 @@ export function TableView() {
         )}
       </div>
       <div className="toolbar">
-        {(tableFormat === 'column' || tableFormat === 'xy') && (
+        {(tableFormat === 'column' || tableFormat === 'xy' || tableFormat === 'survival') && (
           <div className="view-mode-toggle" role="group" aria-label="Table view format">
             <button
               type="button"
@@ -648,11 +816,19 @@ export function TableView() {
           aria-label={`Data for ${tableName}`}
         />
       ) : isSurvival ? (
-        <SurvivalDataGrid
-          data={tableData as SurvivalTableData}
-          onDataChange={(d) => handleDataChange(d)}
-          aria-label={`Data for ${tableName}`}
-        />
+        viewMode === 'tidy' ? (
+          <SurvivalTidyTable
+            data={tableData as SurvivalTableData}
+            onDataChange={(d) => handleDataChange(d)}
+            aria-label={`Tidy view of ${tableName}`}
+          />
+        ) : (
+          <SurvivalDataGrid
+            data={tableData as SurvivalTableData}
+            onDataChange={(d) => handleDataChange(d)}
+            aria-label={`Data for ${tableName}`}
+          />
+        )
       ) : isPartsOfWhole ? (
         <PartsOfWholeDataGrid
           data={tableData as PartsOfWholeTableData}

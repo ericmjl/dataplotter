@@ -80,9 +80,13 @@ export interface ContingencyTableData {
 export interface SurvivalTableData {
   timeLabel: string;
   eventLabel: string;
-  groupLabel?: string;
+  /** Optional labels for each subject (e.g. "Mouse 1", "Patient A") for tracking. */
+  subjectLabels?: string[];
+  /** Ordered list of group names; one column per group (Prism-style). */
+  groupLabels?: string[];
   times: number[];
   events: number[];
+  /** For each row: which group this subject belongs to; value in that column is events[i] (1 or 0). */
   groups?: string[];
 }
 

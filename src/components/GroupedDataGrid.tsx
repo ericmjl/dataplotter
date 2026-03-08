@@ -79,7 +79,7 @@ export function GroupedDataGrid({
                 <td key={j}>
                   <input
                     type="text"
-                    className="data-grid-cell"
+                    className="cell-input"
                     value={formatCellValues(cellValues[i]?.[j] ?? [])}
                     onChange={(e) => setCell(i, j, e.target.value)}
                     onBlur={commit}

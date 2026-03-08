@@ -64,9 +64,10 @@ export function ContingencyDataGrid({
                 <td key={j}>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min={0}
                     step={1}
-                    className="data-grid-cell"
+                    className="cell-input"
                     value={counts[i]?.[j] ?? 0}
                     onChange={(e) => setCount(i, j, e.target.value)}
                     onBlur={commit}

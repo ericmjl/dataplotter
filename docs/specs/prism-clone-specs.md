@@ -21,6 +21,21 @@
 - [x] **PRISM-TBL-009**: The system shall support the Multiple variables table format (one row per case, one column per variable; Prism: correlation matrix, multiple regression, extract/rearrange) with registry and analyses.
 - [x] **PRISM-TBL-010**: The system shall support the Nested table format (hierarchical replication; Prism: nested t-test, nested one-way ANOVA, descriptive/normality/outlier per subcolumn).
 
+### Table grid interaction (Excel-like)
+
+**Reference:** [LLD: Data tables and formats — Table grid interaction](../llds/data-tables-and-formats.md#table-grid-interaction-excel-like)
+
+- [x] **PRISM-TBL-011**: The system shall support two modes in editable data grids: **Navigate** (one cell has focus; value shown as text) and **Edit** (that cell shows an input with DOM focus; value can be changed). Enter, F2, or double-click shall transition from Navigate to Edit; Escape shall cancel edit and return to Navigate; Enter or Tab shall commit and move focus.
+- [x] **PRISM-TBL-012**: In Navigate mode, the system shall move focus to the adjacent cell when the user presses Arrow Up, Down, Left, or Right. At grid edges, focus shall not wrap (focus stays at edge).
+- [x] **PRISM-TBL-013**: In Navigate mode, the system shall enter Edit mode for the focused cell when the user presses Enter or F2.
+- [x] **PRISM-TBL-014**: In Edit mode, the system shall commit the current value and move focus down (same column, next row) when the user presses Enter. If the cell is in the last row, the system shall either leave focus on that cell or add a new row (product decision).
+- [x] **PRISM-TBL-015**: In Edit mode, the system shall commit the current value and move focus to the next cell (row-first order) when the user presses Tab, and to the previous cell when the user presses Shift+Tab.
+- [x] **PRISM-TBL-016**: In Edit mode, when the user presses Escape, the system shall discard in-cell changes, exit Edit mode, and return to cell selection (Navigate) on the same cell (Excel-like).
+- [x] **PRISM-TBL-017**: The system shall apply the same keyboard behavior (Enter to edit, Escape to cancel, Tab/arrows to move) to editable header cells (e.g. column names in Column tables) where applicable.
+- [x] **PRISM-TBL-018**: The data grid (or a focusable wrapper) shall be reachable via Tab from the rest of the page. Once focus is inside the grid, arrow keys shall move between cells without leaving the grid until the user tabs out or focuses another control.
+- [x] **PRISM-TBL-019**: The system shall expose the grid to assistive technologies as a grid (e.g. `role="grid"`, `aria-rowindex`, `aria-colindex`) and the active cell as selected when in Navigate mode; the cell in Edit mode shall expose the input with an appropriate label so screen reader users hear "row X, column Y" and "editing" as applicable.
+- [ ] **PRISM-TBL-020**: The behavior in PRISM-TBL-011 through PRISM-TBL-019 shall apply to all editable table grids: Column/XY (DataGrid), Grouped, Contingency, Survival (wide and tidy), and Parts of whole. Read-only views (e.g. transformed data view) may omit Edit mode but shall still support arrow-key focus movement for review. *(Column, XY, Survival wide implemented; Grouped, Contingency, Parts of whole, Survival tidy pending.)*
+
 ---
 
 ## Analyses (PRISM-ANA)
@@ -69,6 +84,7 @@
 - [x] **PRISM-WKF-012**: The system shall allow the user to rename a table from the UI (sidebar or main view). The name shall be stored in project state and propagate everywhere the table is referenced (sidebar, main area title, export, NL context).
 - [D] **PRISM-WKF-009**: The system shall support "duplicate family" (duplicate a table and all linked analyses and graphs, then replace data in the new table).
 - [D] **PRISM-WKF-010**: The system shall support info/text sheets for project notes.
+- [ ] **PRISM-WKF-013**: The system shall allow one-click export of the current table's data, the statistical models and analyses run, and the chart(s) as a single Python script with [PEP 723](https://peps.python.org/pep-0723/) inline script metadata (dependencies, requires-python) so that the user can run `uv run script.py` to recreate the entire analysis and figures without the GUI. Export scope: at least one table plus its analyses and graphs; optional whole-project export. The script shall embed or load the data, run equivalent models/analyses (e.g. PyMC or scipy/statsmodels), and produce the same chart(s) (e.g. save figures to files).
 
 ---
 
@@ -79,7 +95,8 @@
 - [ ] **PRISM-ANA-015**: When PyMC is available and the user runs an unpaired t-test, the system shall compute and display Bayesian posterior estimates (group mean CrIs, mean difference CrI, P(superiority)) alongside frequentist results (t, p, df, CI).
 - [ ] **PRISM-ANA-016**: When PyMC is available and the user runs a paired t-test, the system shall compute and display Bayesian posterior estimates alongside frequentist results.
 - [ ] **PRISM-ANA-017**: The system shall use improper flat priors for Bayesian group comparisons (μ priors flat; σ priors half-flat) during concept validation, with the option to refine prior choice later.
-- [ ] **PRISM-ANA-018**: When PyMC fails or is unavailable, the system shall fall forward to displaying frequentist results only (no error; Bayesian fields undefined).
+- [x] **PRISM-ANA-018**: When PyMC fails or is unavailable, the system shall fall forward to displaying frequentist results only (no error; Bayesian fields undefined).
+- [ ] **PRISM-ANA-019**: When PyMC is available and the user runs Kaplan–Meier (survival) analysis, the system shall compute and display Bayesian posterior summaries (e.g. posterior survival curves, median survival CrI, hazard ratio CrI when comparing two groups) alongside the frequentist Kaplan–Meier curve. When PyMC fails or is unavailable, the system shall display the TypeScript Kaplan–Meier result only (no error; Bayesian fields undefined).
 
 ---
 
@@ -128,10 +145,10 @@ Work is split so subagents can run in parallel with minimal overlap:
 
 | Area      | Implemented | Active gap | Deferred |
 |-----------|-------------|------------|----------|
-| TBL       | 8           | 0          | 2        |
-| ANA       | 14          | 0          | 0        |
+| TBL       | 19          | 1          | 0        |
+| ANA       | 15          | 4          | 0        |
 | GPH       | 10          | 0          | 0        |
-| WKF       | 10          | 0          | 2        |
+| WKF       | 10          | 1          | 2        |
 | TRANSFORM | 9           | 0          | 0        |
 | UI (modal)| 5           | 0          | 0        |
 

@@ -68,6 +68,23 @@ Analyses that support Bayesian estimation (via PyMC) include optional Bayesian f
 
 ---
 
+## Bayesian survival analysis (PyMC)
+
+**Goal (HLD §6):** When PyMC is available, survival (Kaplan–Meier) analysis may include a Bayesian path: posterior survival curves and credible intervals, so users get both the classic Kaplan–Meier curve and Bayesian summaries (e.g. median survival CrI, hazard ratio CrI when comparing two groups).
+
+**Current state:** Kaplan–Meier is implemented in TypeScript only (`src/engine/statistics/kaplanMeier.ts`); no PyMC survival path exists. Result type `kaplan_meier` has `curves: { group, time, survival }[]`.
+
+**Target design:**
+
+1. **Model choice:** A parametric or semi-parametric survival model in PyMC (e.g. Weibull survival, or piecewise exponential) that takes (time, event) per subject and optional group. Output: posterior samples of survival function (and optionally hazard), median survival, and—for two groups—hazard ratio with CrI.
+2. **Result extension:** Extend `kaplan_meier` result with optional Bayesian fields, e.g. `medianSurvivalCrI?: [number, number]` (or per-group), `hazardRatioCrI?: [number, number]` when two groups, and optionally `posteriorSurvivalCurves?:` (summary curves with uncertainty bands). Same result shape for charts and UI; Bayesian fields populated when PyMC completes.
+3. **Engine flow:** In `runAnalysisAsync()`, when `analysisType === 'kaplan_meier'` and format is survival: run TS Kaplan–Meier first (frequentist result); if Pyodide/PyMC is available, run PyMC survival script and merge posterior summaries into the result; otherwise leave Bayesian fields undefined. Fall-forward: if PyMC fails or is unavailable, return frequentist-only result (no error).
+4. **Implementation:** New module `src/engine/pymc/survival.ts` (or similar) that accepts SurvivalTableData, runs a PyMC survival model (script string or API), and returns the posterior summaries to merge. Same loader/runner pattern as `descriptive.ts`, `regression.ts`, `doseResponse4pl.ts`.
+
+**Traceability:** EARS PRISM-ANA-019 (Bayesian survival with PyMC); implementation plan phase for “Bayesian survival”.
+
+---
+
 ## Result type contract
 
 Each result variant has `type: '<analysis_type>'` and a set of fields. The chart adapter and UI may depend on specific fields (e.g. `curve` for dose-response overlay; `groupMeans` for ANOVA). New analyses must:

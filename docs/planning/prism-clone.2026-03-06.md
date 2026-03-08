@@ -72,6 +72,8 @@ Downloaded Prism user guide (246 pages). **Data tables section:** [Using Prism's
 - **Heat map:** New graph type for Grouped data; Phase 3 follow-on or Phase 9.
 - **Forest plot:** Column graph variant (median + range, horizontal, log scale, line at 1); Phase 7 or 9.
 - **Excluding points/sets:** Cell-level or data-set-level exclusion; Phase 9 or follow-on.
+- **Bayesian survival (PyMC):** When PyMC is available, Kaplan–Meier/survival analysis includes Bayesian posterior (survival curves, median CrI, hazard ratio CrI). See HLD §6, LLD analyses-and-engine (Bayesian survival), EARS PRISM-ANA-019. Add as Phase 10 or fold into Phase 5 follow-on.
+- **Reproducible export (PEP 723):** One-click export of data + models + analyses + chart as a single .py script with PEP 723 inline metadata; `uv run script.py` recreates the analysis. See HLD goal 6, LLD project-and-workflows (Reproducible export), EARS PRISM-WKF-013. Add as Phase 11 (or combine with a later workflow phase).
 
 ---
 
@@ -409,6 +411,67 @@ Downloaded Prism user guide (246 pages). **Data tables section:** [Using Prism's
 
 ---
 
+### Phase 10: Bayesian survival analysis (PyMC)
+
+**Goal:** When PyMC is available, survival (Kaplan–Meier) analysis includes a Bayesian path: posterior survival curves and credible intervals (e.g. median survival CrI, hazard ratio CrI for two groups), alongside the existing TypeScript Kaplan–Meier result.
+
+#### Deliverables
+
+1. **PyMC survival module**
+   - **Specs**: PRISM-ANA-019  
+   - New module `src/engine/pymc/survival.ts` (or equivalent): accepts SurvivalTableData, runs a PyMC survival model (e.g. Weibull or piecewise exponential), returns posterior summaries (survival curve, median CrI, optional hazard ratio CrI). Same loader/runner pattern as descriptive, regression, doseResponse4pl.
+
+2. **Result type extension**
+   - Extend `kaplan_meier` result with optional Bayesian fields: e.g. `medianSurvivalCrI`, `hazardRatioCrI` (two groups), optional `posteriorSurvivalCurves` or uncertainty bands. Charts and UI consume same result shape; Bayesian fields populated when PyMC completes.
+
+3. **runAnalysisAsync branch**
+   - When `analysisType === 'kaplan_meier'` and format is survival: run TS Kaplan–Meier first; if Pyodide/PyMC available, run PyMC survival script and merge posterior summaries; on failure or unavailable, return frequentist-only result (no error).
+
+4. **NL exposure**
+   - No new tool required; existing run_analysis and Kaplan–Meier in context. Optional: mention in context that Bayesian survival is available when PyMC loads.
+
+#### Testing Requirements
+
+- ✅ PRISM-ANA-019: With PyMC available, Kaplan–Meier run from Survival table returns result with optional Bayesian fields; with PyMC unavailable, returns TS Kaplan–Meier only.
+- ✅ Survival curve graph can use Bayesian posterior if present (e.g. uncertainty band); otherwise unchanged.
+
+#### Definition of Done
+
+- [ ] PyMC survival module implemented and called from runAnalysisAsync for kaplan_meier.
+- [ ] kaplan_meier result type extended with optional Bayesian fields; fall-forward when PyMC fails.
+- [ ] Phase 10 spec PRISM-ANA-019 verified with @spec and tests.
+
+---
+
+### Phase 11: Reproducible export (PEP 723 Python script)
+
+**Goal:** One-click export of the current table's data, models, analyses, and chart(s) as a single .py script with PEP 723 inline script metadata, runnable with `uv run script.py` to recreate the analysis and figures.
+
+#### Deliverables
+
+1. **Export function**
+   - **Specs**: PRISM-WKF-013  
+   - New export path (e.g. `src/io/exportReproducibleScript.ts` or under `src/io/`): given project + tableId (or table + analyses + graphs), build a single Python script string. Script contains: (1) PEP 723 block (`# /// script`, `requires-python`, `dependencies`); (2) embedded or loaded table data; (3) code that runs equivalent models/analyses (PyMC or scipy/statsmodels); (4) code that produces the same chart(s) and saves figures. Dependencies list reflects what the script needs (numpy, pymc, matplotlib or plotly, pandas as needed).
+
+2. **UI**
+   - File menu or toolbar: "Export as Python script" (or "Export reproducible script"). Scope: selected table and its analyses and graphs (minimum); optional "Export entire project as script" later.
+
+3. **Documentation**
+   - User-facing: running the script requires `uv` (or another PEP 723–aware runner); `uv run script.py` creates an isolated env and runs the script. Document in app help or README.
+
+#### Testing Requirements
+
+- ✅ PRISM-WKF-013: Export produces a valid .py file with PEP 723 block and executable body; manual or automated check that `uv run script.py` runs and produces output (e.g. printed results, saved figure files).
+- ✅ Exported script uses same analysis types/options as the app so results are comparable.
+
+#### Definition of Done
+
+- [ ] Export function implemented; script string built from project/table/analyses/graphs.
+- [ ] UI exposes "Export as Python script" for the current table (and its analyses/graphs).
+- [ ] Documentation updated; PRISM-WKF-013 verified.
+
+---
+
 ## Requirements Traceability
 
 | Phase | Specs |
@@ -422,6 +485,8 @@ Downloaded Prism user guide (246 pages). **Data tables section:** [Using Prism's
 | 7 | PRISM-ANA-012 (existing), PRISM-ANA-013, PRISM-ANA-014, PRISM-WKF-005, PRISM-GPH-008, PRISM-WKF-008 |
 | 8 | PRISM-WKF-006 |
 | 9 | PRISM-GPH-010; normality test, identify outliers, transform, normalize (data prep); two Y-axes, line of identity, box-and-whisker, apply style; optional heat map, forest plot, excluding points |
+| 10 | PRISM-ANA-019 (Bayesian survival with PyMC) |
+| 11 | PRISM-WKF-013 (reproducible export, PEP 723 Python script) |
 
 ---
 

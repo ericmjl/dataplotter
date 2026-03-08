@@ -17,6 +17,7 @@
 3. **Full analysis parity:** Reimplement all Prism analysis types (parametric and nonparametric: t-tests, ANOVA, regression, contingency, survival, dose-response, ROC, Bland–Altman, etc.) so the clone supports the same analyses as Prism, specified and phased in LLDs and EARS.
 4. **Prism file round-trip:** Support both import and export of .pzfx/.prism so users can open Prism projects and save back to Prism-compatible files.
 5. **Same technical constraints:** Single-page app (browser and/or desktop); no backend required; analyses run in the browser (current engine plus Bayesian layer; optional Pyodide/PyMC for richer models).
+6. **Reproducible analyses:** Enable one-click export of the current table’s data, models, statistical analyses, and chart(s) as a single Python script with [PEP 723](https://peps.python.org/pep-0723/) inline script metadata so that `uv run script.py` recreates the entire analysis and figures without the GUI.
 
 ---
 
@@ -67,7 +68,9 @@ The system stays the same as current dataplotter at the top level:
 | **Analysis placement** | One engine (`runAnalysis()`), result types in `analysis.ts`, options in `analysisSchemas.ts`. | Matches current pattern; keeps one place for “what analyses exist” and one for execution. |
 | **Graphs per table** | Keep multiple graphs per table; each graph can reference one optional analysis (e.g. fit overlay). | Already supported in state; no change. Layouts will add a separate “layout” entity that references graphs. |
 | **Persistence** | JSON save/load plus Prism/Pzfx import and export. | Round-trip with Prism files is in scope; JSON remains the native format. |
+| **Table interaction** | Excel-like keyboard-driven grid: arrow keys to move between cells, Enter to enter/edit cell, Escape to cancel edit, Tab for next cell. | Users who work with data entry expect spreadsheet-style navigation and editing; current click-and-blur-only behavior is insufficient. Specified in LLD and EARS. |
 | **Scope of “clone”** | Full analysis parity (all Prism analysis types reimplemented); Prism-like workflow and table/graph semantics; UI can evolve. | Clone supports the same analyses as Prism; implementation is phased via LLDs and EARS. |
+| **Reproducible export** | One-click export as a single .py script (PEP 723 inline metadata) embedding data, model/analysis code, and chart generation; runnable with `uv run` to reproduce the analysis. | Encourages reproducibility and sharing; script is self-contained (dependencies in metadata; no backend). See LLD project-and-workflows and EARS PRISM-WKF-013. |
 
 ---
 
@@ -99,7 +102,7 @@ Statistical analyses in the clone provide **both frequentist and Bayesian result
   - **Frequentist:** TypeScript implementations using jStat (existing path, synchronous).
   - **Bayesian:** Pyodide + PyMC (CPython in WASM), loaded on demand. Async only via `runAnalysisAsync()`. Uses improper flat priors initially (concept validation); prior choice can be refined later.
   - **Fall-forward:** When PyMC fails or is unavailable, UI shows frequentist results only. When PyMC succeeds, both sections display.
-- **Scope:** Descriptive, t-tests (unpaired/paired), one-way ANOVA, linear regression, dose-response 4PL get Bayesian extensions. Result types carry optional posterior/credible output. Detailed task breakdown in `docs/plans/2025-03-05-bayesian-by-default.md`.
+- **Scope:** Descriptive, t-tests (unpaired/paired), one-way ANOVA, linear regression, dose-response 4PL get Bayesian extensions. **Survival (Kaplan–Meier)** gets a Bayesian path via PyMC: when PyMC is available, survival analysis may include posterior survival curves and credible intervals (e.g. median survival CrI, hazard ratio CrI for two groups); the existing TypeScript Kaplan–Meier remains the frequentist/fallback path. Result types carry optional posterior/credible output. Detailed task breakdown in `docs/plans/2025-03-05-bayesian-by-default.md`.
 - **Group comparison terminology:** Analyses traditionally called "t-tests" are also described as "group comparisons" in Bayesian context (following Kruschke's BEST: "Bayesian Estimation Supersedes the t-Test"). The analysis type IDs remain `unpaired_ttest` and `paired_ttest` for backward compatibility; Bayesian outputs focus on posterior means, differences, and P(superiority) rather than t-statistics.
 
 **Current codebase:** HLD assumes dataplotter's existing architecture (see [reference/architecture.md](reference/architecture.md)). LLDs and EARS detail changes per component.

@@ -62,7 +62,7 @@ export function PartsOfWholeDataGrid({
               <td>
                 <input
                   type="text"
-                  className="data-grid-cell"
+                  className="cell-input"
                   value={label}
                   onChange={(e) => setLabel(i, e.target.value)}
                   onBlur={commit}
@@ -71,7 +71,8 @@ export function PartsOfWholeDataGrid({
               <td>
                 <input
                   type="number"
-                  className="data-grid-cell"
+                  inputMode="decimal"
+                  className="cell-input"
                   value={local.values[i] ?? 0}
                   onChange={(e) => setValue(i, Number(e.target.value) || 0)}
                   onBlur={commit}

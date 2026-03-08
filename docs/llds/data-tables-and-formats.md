@@ -93,6 +93,44 @@ Adding a format requires: (1) extend `project.ts` if the format ID already exist
 
 ---
 
+## Table grid interaction (Excel-like)
+
+**Goal:** Data entry in table grids shall feel like a spreadsheet: keyboard-first navigation, clear focus and edit states, and predictable commit/cancel. See HLD design decision "Table interaction" and EARS PRISM-TBL-011 through PRISM-TBL-020.
+
+### States
+
+- **Navigate:** One cell (or header) has *focus*; it is visually indicated (e.g. outline or highlight). No inline editor is active; the cell value is displayed as text.
+- **Edit:** The focused cell is in *edit mode*: an input (or equivalent) is rendered in that cell, has DOM focus, and the user can change the value. Committing or cancelling exits edit mode and returns to Navigate.
+
+Transitions: *Navigate → Edit* on Enter or F2 or double-click. *Edit → Navigate* on Escape (cancel, discard in-cell changes), or on Enter/Tab (commit and move), or on blur (commit and stay in Navigate). Clicking another cell from Navigate moves focus; clicking another cell from Edit commits the current cell and moves focus (then optionally enters edit on the new cell if Enter was not used, or leave to single Enter).
+
+### Keyboard behavior
+
+| Key | In Navigate | In Edit |
+|-----|-------------|--------|
+| **Arrow Up/Down/Left/Right** | Move focus to the adjacent cell in that direction; do not enter edit. At grid edges, do not wrap (or wrap by product decision). | Default browser behavior (cursor movement in text); do not move focus. |
+| **Enter** | Enter edit mode for the focused cell. | Commit the value, exit edit, move focus down (same column, next row). If at last row, stay at same cell or add row (product decision). |
+| **Shift+Enter** | (Optional) Enter edit, or move focus up. | Commit and move focus up. |
+| **Tab** | Move focus to next cell (row-first: right, then wrap to next row). | Commit and move focus to next cell (same as Navigate Tab). |
+| **Shift+Tab** | Move focus to previous cell. | Commit and move focus to previous cell. |
+| **Escape** | No-op (or blur grid). | Exit edit and return to cell selection (Navigate) on the same cell; discard in-cell changes. Matches Excel. |
+| **F2** | Enter edit mode for the focused cell. | No-op or place cursor at end (product decision). |
+
+Header cells (column names, group headers): if they are editable (e.g. Column table), same Enter/F2 to edit, Escape to cancel, Enter to commit. Arrow keys in Navigate may move between header and body or within header row as needed.
+
+### Focus and accessibility
+
+- The grid (or a wrapper) is focusable (e.g. `tabIndex={0}`) so keyboard users can tab into it. Once inside, arrow keys move between cells without leaving the grid.
+- Focus is *managed*: the grid tracks the current (row, col) or cell key and renders focus indicator and, in edit mode, the input. Avoid relying on native tab order for data cells (too many tab stops); use a single grid focus and arrow keys.
+- ARIA: `role="grid"`, `aria-rowindex`, `aria-colindex`, and for the active cell `aria-selected="true"` when in Navigate; the edited cell contains a focused `input`/`combobox` with appropriate `aria-label`. Screen reader users get "row X, column Y" and "editing" when in edit mode.
+
+### Scope
+
+- Applies to all editable data grids: Column/XY (DataGrid), Grouped, Contingency, Survival (wide and tidy), Parts of whole. Read-only views (e.g. transformed view, tidy view for column/xy when read-only) may show the same grid structure but without edit mode; arrow keys can still move focus for review.
+- Special grids (e.g. Survival with group columns, or cells that are dropdowns) still follow the same Navigate vs Edit model: in Navigate, arrow keys move; Enter/F2 enter edit; in Edit, the control (input, select) has focus and Escape cancels, Enter/Tab commit and move.
+
+---
+
 ## Open questions and future decisions
 
 ### Resolved

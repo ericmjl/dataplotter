@@ -73,6 +73,14 @@ The project is a single document: tables, analyses, graphs, and selection. Persi
 - **Intent:** Prism has “info” sheets for notes. Optional: add an InfoSheet type (id, name, content: string or rich text). Shown in sidebar; selecting one shows a simple editor. No analysis or graph; for project notes.
 - **Scope:** Deferred in HLD; can be added to project model and LLD when needed.
 
+### Reproducible export (PEP 723 Python script)
+
+- **Intent (HLD goal 6):** Enable one-click export of the current table's data, the statistical models and analyses that were run, and the chart(s) as a **single Python script** with [PEP 723](https://peps.python.org/pep-0723/) inline script metadata. The script is self-contained: dependencies (e.g. numpy, pymc, matplotlib or plotly) are declared in the script header; the user can run `uv run script.py` (or equivalent) to recreate the entire analysis and figures without the dataplotter GUI, encouraging reproducibility and sharing.
+- **Format:** The exported file is a `.py` script. At the top, a PEP 723 block in comments (e.g. `# /// script`, `requires-python`, `dependencies`, `# ///`). The script body: (1) embed or load the table data; (2) code that runs the same models/analyses (e.g. PyMC or scipy/statsmodels equivalent); (3) code that produces the same chart(s). Output: printed results and figures saved to files.
+- **Scope:** Export scoped by selection: e.g. one table + its analyses + its graphs, or entire project. Minimum viable: one table + its analyses + its graphs. File menu or toolbar: "Export as Python script" (or "Export reproducible script").
+- **Implementation:** Add an export function that takes (project, tableId?) or (table, analyses[], graphs[]) and builds the script string: PEP 723 block, data block, analysis block, plotting block. Use same analysis types and options as in the app. Document that `uv run script.py` requires `uv` and creates an isolated env from script metadata.
+- **Traceability:** EARS PRISM-WKF-013.
+
 ---
 
 ## NL (Chat) integration

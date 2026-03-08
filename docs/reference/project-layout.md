@@ -39,6 +39,12 @@
 | `NewTableDialog.tsx` | Modal to create a table (name, format). |
 | `ChatPanel.tsx` | Right-hand chat: messages, input; calls NL orchestrator with `callLLM`. |
 
+## Hooks: `src/hooks/`
+
+| File | Role |
+|------|------|
+| `useGridEdit.ts` | Shared Excel-like grid interaction (focus, arrows, Enter/F2/Tab/Escape) for DataGrid and SurvivalDataGrid. |
+
 ## State: `src/store/`
 
 | File | Role |

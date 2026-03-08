@@ -461,6 +461,7 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
       const data: SurvivalTableData = {
         timeLabel: survivalTimeLabel || 'Time',
         eventLabel: survivalEventLabel || 'Event',
+        groupLabels: ['Control', 'Treatment'],
         times: [],
         events: [],
       };

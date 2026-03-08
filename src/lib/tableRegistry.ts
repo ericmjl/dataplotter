@@ -116,11 +116,8 @@ export function getSchema(
     const surv = data as SurvivalTableData;
     const cols = [
       { id: 'time', label: surv.timeLabel, kind: 'number' as const },
-      { id: 'event', label: surv.eventLabel, kind: 'number' as const },
+      ...(surv.groupLabels ?? []).map((label, i) => ({ id: `group-${i}`, label, kind: 'number' as const })),
     ];
-    if (surv.groups?.length) {
-      cols.push({ id: 'group', label: surv.groupLabel ?? 'Group', kind: 'number' as const });
-    }
     return { columns: cols };
   }
   if (format === 'partsOfWhole' && data && 'labels' in data && 'values' in data) {
