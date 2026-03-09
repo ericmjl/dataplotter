@@ -1,0 +1,99 @@
+<div class="main-area">
+    <div class="content-card analysis-panel">
+        <header class="panel-header">
+            <h2>{{ analysis.type }}</h2>
+            <div class="panel-info">
+                Table: {{ table.name if table else 'Unknown' }}
+            </div>
+        </header>
+        
+        <div class="analysis-content">
+            {% if analysis.error %}
+            <div class="validation-errors">
+                <h3>Error</h3>
+                <pre>{{ analysis.error }}</pre>
+            </div>
+            {% elif analysis.result %}
+            <div class="result-box">
+                <h3>Results</h3>
+                {% if analysis.result.type == 'descriptive' %}
+                <table class="data-grid">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>N</th>
+                            <th>Mean</th>
+                            <th>SEM</th>
+                            <th>SD</th>
+                            <th>Median</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for col in analysis.result.by_column %}
+                        <tr>
+                            <td>{{ col.label }}</td>
+                            <td>{{ col.n }}</td>
+                            <td>{{ col.mean | round(3) }}</td>
+                            <td>{{ col.sem | round(3) }}</td>
+                            <td>{{ col.sd | round(3) }}</td>
+                            <td>{{ col.median | round(3) if col.median else '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% elif analysis.result.type in ['unpaired_ttest', 'paired_ttest'] %}
+                <div class="ttest-result">
+                    <p><strong>Groups:</strong> {{ analysis.result.label_a }} vs {{ analysis.result.label_b }}</p>
+                    <p><strong>Mean difference:</strong> {{ analysis.result.mean_diff | round(3) }}</p>
+                    <p><strong>t-statistic:</strong> {{ analysis.result.t | round(3) }}</p>
+                    <p><strong>p-value:</strong> {{ analysis.result.p | round(4) }}</p>
+                    <p><strong>df:</strong> {{ analysis.result.df | round(1) }}</p>
+                    <p><strong>95% CI:</strong> [{{ analysis.result.ci_lower | round(3) }}, {{ analysis.result.ci_upper | round(3) }}]</p>
+                </div>
+                {% elif analysis.result.type == 'one_way_anova' %}
+                <div class="anova-result">
+                    <p><strong>F-statistic:</strong> {{ analysis.result.f | round(3) }}</p>
+                    <p><strong>p-value:</strong> {{ analysis.result.p | round(4) }}</p>
+                    <p><strong>df:</strong> {{ analysis.result.df_between | round(1) }} between, {{ analysis.result.df_within | round(1) }} within</p>
+                    <table class="data-grid">
+                        <thead><tr><th>Group</th><th>Mean</th></tr></thead>
+                        <tbody>
+                            {% for name, mean in analysis.result.group_means %}
+                            <tr><td>{{ name }}</td><td>{{ mean | round(3) }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% elif analysis.result.type == 'kaplan_meier' %}
+                <div class="km-result">
+                    <p><strong>Median survival:</strong></p>
+                    <ul>
+                        {% for group, median in analysis.result.median_survival.items %}
+                        <li>{{ group }}: {{ median | round(1) if median else 'Not reached' }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if analysis.result.log_rank_p %}
+                    <p><strong>Log-rank p-value:</strong> {{ analysis.result.log_rank_p | round(4) }}</p>
+                    {% endif %}
+                </div>
+                {% else %}
+                <pre>{{ analysis.result | tojson(indent=2) }}</pre>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="empty-result">
+                <p>Click "Run" to execute the analysis.</p>
+            </div>
+            {% endif %}
+            
+            <div class="toolbar">
+                <button class="btn btn-primary" hx-post="/analyses/{{ analysis.id }}/run" hx-target="#analysis-panel">
+                    Run Analysis
+                </button>
+                <button class="btn btn-danger" hx-confirm="Delete this analysis?" hx-delete="/analyses/{{ analysis.id }}">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

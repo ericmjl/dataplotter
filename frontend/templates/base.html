@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataplotter</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            {% include "partials/sidebar.html" %}
+        </aside>
+        
+        <div class="app-main-wrap">
+            <main class="main-content" id="main-content">
+                {% block content %}
+                <div class="empty-state">
+                    <h2>Welcome to Dataplotter</h2>
+                    <p>Create a table to get started</p>
+                </div>
+                {% endblock %}
+            </main>
+            
+            <aside class="chat-panel" id="chat-panel">
+                {% include "partials/chat.html" %}
+            </aside>
+        </div>
+    </div>
+</body>
+</html>

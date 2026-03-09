@@ -1,0 +1,57 @@
+<div class="main-area">
+    <div class="content-card graph-view" id="graph-{{ graph.id }}">
+        <header class="view-header">
+            <h2>{{ graph.name }}</h2>
+            <div class="view-actions">
+                <button class="btn" onclick="exportGraph('png')">Export PNG</button>
+                <button class="btn" onclick="exportGraph('svg')">Export SVG</button>
+            </div>
+        </header>
+        
+        <div class="graph-container" id="graph-container-{{ graph.id }}" style="height: 600px;">
+            Loading graph...
+        </div>
+    </div>
+</div>
+
+<script>
+function renderGraph() {
+    const graphData = {{ graph | tojson }};
+    const tableData = {{ table.data | tojson }};
+    const analysisResult = {{ analysis.result | tojson if analysis and analysis.result else 'null' }};
+    const graphOptions = {{ graph.options | tojson }};
+    
+    fetch('/api/charts/build', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            graph_type: graphData.graph_type,
+            table_data: tableData,
+            analysis_result: analysisResult,
+            graph_options: graphOptions
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('graph-container-{{ graph.id }}');
+        const traces = data.traces;
+        const layout = data.layout || {};
+        
+        Plotly.newPlot(container, traces, {
+            ...layout,
+            showlegend: graphOptions.showLegend !== false,
+            xaxis: {title: graphOptions.xLabel || ''},
+            yaxis: {title: graphOptions.yLabel || ''}
+        });
+    });
+}
+
+function exportGraph(format) {
+    Plotly.downloadImage('graph-container-{{ graph.id }}', {
+        format: format,
+        filename: '{{ graph.name }}.' + format
+    });
+}
+
+setTimeout(renderGraph, 100);
+</script>

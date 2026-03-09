@@ -31,3 +31,11 @@ scripts/youtube_prism_transcripts/transcripts
 
 # Prism guide pages (optional context)
 scripts/prism_guide_pages/guide_pages
+
+# Python
+__pycache__
+*.py[cod]
+*.egg-info
+.eggs
+.venv
+venv

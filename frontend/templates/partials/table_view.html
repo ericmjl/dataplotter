@@ -1,0 +1,64 @@
+<div class="main-area">
+    <div class="content-card">
+        <header class="view-header">
+            <h2>{{ table.name }}</h2>
+            <div class="view-actions">
+                <button class="btn btn-primary" hx-get="/api/analyses/{{ table.id }}">
+                    Add Analysis
+                </button>
+                <button class="btn btn-primary" hx-get="/api/graphs/{{ table.id }}">
+                    Add Graph
+                </button>
+            </div>
+        </header>
+        
+        <div class="data-grid-wrap" role="region" aria-label="Data table">
+            <table class="data-grid" id="data-grid-{{ table.id }}" role="grid" aria-label="{{ table.name }}">
+                <thead>
+                    <tr>
+                        {% for label in table.data.column_labels %}
+                        <th>{{ label }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in table.data.rows %}
+                    <tr>
+                        {% for cell in row %}
+                        <td contenteditable="true" 
+                            hx-trigger="blur" 
+                            hx-post="/tables/{{ table.id }}/data"
+                            hx-vals="js:{data: {columnLabels: {{ table.data.column_labels | tojson }}, rows: getDataRows() }}">
+                            {{ cell if cell is not none else '' }}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                    <tr>
+                        {% for label in table.data.column_labels %}
+                        <td contenteditable="true" class="new-row-cell">+</td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function getDataRows() {
+    const table = document.getElementById('data-grid-{{ table.id }}');
+    const rows = [];
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+    const tbody = table.querySelector('tbody');
+    tbody.querySelectorAll('tr').forEach(tr => {
+        const row = [];
+        tr.querySelectorAll('td').forEach(td => {
+            const val = td.textContent.trim();
+            row.push(val === '' ? null : parseFloat(val));
+        });
+        rows.push(row);
+    });
+    return {columnLabels: headers, rows: rows};
+}
+</script>

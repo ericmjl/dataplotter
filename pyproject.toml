@@ -1,0 +1,90 @@
+[project]
+name = "dataplotter"
+version = "0.1.0"
+description = "GraphPad Prism clone with FastAPI + HTMX"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "jinja2>=3.1.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.6.0",
+    "numpy>=2.0.0",
+    "scipy>=1.14.0",
+    "statsmodels>=0.14.0",
+    "lifelines>=0.30.0",
+    "scikit-learn>=1.5.0",
+    "pandas>=2.2.0",
+    "plotly>=5.24.0",
+    "llamabot>=0.15.0",
+    "python-multipart>=0.0.18",
+    "nanoid>=2.0.0",
+    "pyarrow>=18.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64", "win-64"]
+
+[tool.pixi.pypi-dependencies]
+dataplotter = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+
+[tool.pixi.feature.dev.tasks]
+serve = "uvicorn backend.app.main:app --reload --port 8000"
+test = "pytest backend/tests -v --tb=short"
+test-cov = "pytest backend/tests -v --cov=backend/app --cov-report=term-missing"
+lint = "ruff check backend"
+format = "ruff format backend"
+typecheck = "mypy backend"
+
+[tool.pixi.tasks]
+start = "uvicorn backend.app.main:app --reload --port 8000"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "TCH", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["backend"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = ["scipy.*", "statsmodels.*", "lifelines.*", "sklearn.*", "plotly.*", "llamabot.*", "nanoid.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["backend/app"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:", "raise NotImplementedError"]
