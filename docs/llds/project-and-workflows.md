@@ -60,6 +60,7 @@ The project is a single document: tables, analyses, graphs, and selection. Persi
 
 - **Intent:** Make one or more graphs look like another by copying formatting (fonts, axis range/ticks, colors, etc.). Distinct from wand (which copies analysis + graph *setup* to another *table*); here the target is existing graph(s) and only visual options are copied.
 - **Design:** UI: select graph(s), invoke “Apply style from…” or “Format like…”, choose example graph, choose which properties to copy (axis range, fonts, colors, etc.). Store: applyGraphStyleFromExample(targetGraphIds, exampleGraphId, optionsMask) or similar that updates GraphOptions on target graphs from the example graph. No new entity; graph options only.
+- **Per-axis title controls ([Prism 10.6 / FAQ 2259](https://www.graphpad.com/support/faqid/2259/)):** When applying style (Magic) or when wand copies graph setup, allow the user to choose which titles to update: X axis title, Y axis title, and/or graph title independently (e.g. update X axis to match source but leave Y and graph title unchanged). Options mask or separate booleans (copyXTitle, copyYTitle, copyGraphTitle) in the apply action.
 - **Scope:** Implementation plan Phase 9; EARS can add a WKF spec when formalizing.
 
 ### Layouts (compose multiple graphs on one page)
@@ -73,12 +74,12 @@ The project is a single document: tables, analyses, graphs, and selection. Persi
 - **Intent:** Prism has “info” sheets for notes. Optional: add an InfoSheet type (id, name, content: string or rich text). Shown in sidebar; selecting one shows a simple editor. No analysis or graph; for project notes.
 - **Scope:** Deferred in HLD; can be added to project model and LLD when needed.
 
-### Reproducible export (PEP 723 Python script)
+### Reproducible export (data + script as single package)
 
-- **Intent (HLD goal 6):** Enable one-click export of the current table's data, the statistical models and analyses that were run, and the chart(s) as a **single Python script** with [PEP 723](https://peps.python.org/pep-0723/) inline script metadata. The script is self-contained: dependencies (e.g. numpy, pymc, matplotlib or plotly) are declared in the script header; the user can run `uv run script.py` (or equivalent) to recreate the entire analysis and figures without the dataplotter GUI, encouraging reproducibility and sharing.
-- **Format:** The exported file is a `.py` script. At the top, a PEP 723 block in comments (e.g. `# /// script`, `requires-python`, `dependencies`, `# ///`). The script body: (1) embed or load the table data; (2) code that runs the same models/analyses (e.g. PyMC or scipy/statsmodels equivalent); (3) code that produces the same chart(s). Output: printed results and figures saved to files.
-- **Scope:** Export scoped by selection: e.g. one table + its analyses + its graphs, or entire project. Minimum viable: one table + its analyses + its graphs. File menu or toolbar: "Export as Python script" (or "Export reproducible script").
-- **Implementation:** Add an export function that takes (project, tableId?) or (table, analyses[], graphs[]) and builds the script string: PEP 723 block, data block, analysis block, plotting block. Use same analysis types and options as in the app. Document that `uv run script.py` requires `uv` and creates an isolated env from script metadata.
+- **Intent (HLD goal 6):** Enable one-click export of the current table's data and the **same** statistical models/analyses as a **single package** (data + script). The script is the **same artifact format** used when running PyMC in the app: pre-templated scripts per analysis, filled with data and options, runnable with `uv run script.py`. The user gets one package (e.g. zip or folder) containing the script and data; running `uv run script.py` recreates the analysis and figures without the GUI. Export and "run in app" share one reusable artifact.
+- **Format:** The exported package contains (1) a `.py` script with [PEP 723](https://peps.python.org/pep-0723/) inline metadata (dependencies: pymc, arviz, numpy, etc.) and (2) the table data (embedded in the script or as a companion file). The script body: load data, run the same PyMC (or frequentist) models, write InferenceData if Bayesian, produce chart(s). Output: results and figures (e.g. saved to files). Same template structure as the scripts used for the in-app PyMC path (HLD §6 arrow of intent).
+- **Scope:** Export scoped by selection: e.g. one table + its analyses + its graphs, or entire project. Minimum viable: one table + its analyses + its graphs. File menu or toolbar: "Export as Python script" or "Export reproducible (data + script)."
+- **Implementation:** Export function takes (project, tableId?) or (table, analyses[], graphs[]) and builds the **filled script** (same templates as used for `uv run` in app): PEP 723 block, data block, analysis block, plotting block. Optionally bundle **uv** in Electron so the exported package can be run with the same uv the app uses. Document that `uv run script.py` requires uv and creates an isolated env from script metadata.
 - **Traceability:** EARS PRISM-WKF-013.
 
 ---

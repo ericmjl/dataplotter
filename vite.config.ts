@@ -5,7 +5,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: process.env.ELECTRON === '1' ? './' : '/',
+  base: process.env.TAURI === '1' || process.env.ELECTRON === '1' ? './' : '/',
   plugins: [nodePolyfills(), react()],
   define: {
     // Plotly.js expects Node's `global`; polyfill for browser

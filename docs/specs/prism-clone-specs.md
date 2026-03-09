@@ -36,6 +36,14 @@
 - [x] **PRISM-TBL-019**: The system shall expose the grid to assistive technologies as a grid (e.g. `role="grid"`, `aria-rowindex`, `aria-colindex`) and the active cell as selected when in Navigate mode; the cell in Edit mode shall expose the input with an appropriate label so screen reader users hear "row X, column Y" and "editing" as applicable.
 - [ ] **PRISM-TBL-020**: The behavior in PRISM-TBL-011 through PRISM-TBL-019 shall apply to all editable table grids: Column/XY (DataGrid), Grouped, Contingency, Survival (wide and tidy), and Parts of whole. Read-only views (e.g. transformed data view) may omit Edit mode but shall still support arrow-key focus movement for review. *(Column, XY, Survival wide implemented; Grouped, Contingency, Parts of whole, Survival tidy pending.)*
 
+### Sample data
+
+**Reference:** [LLD: Data tables and formats — Sample data](../llds/data-tables-and-formats.md#sample-data-for-each-table-type)
+
+- [x] **PRISM-TBL-021**: The system shall provide sample data for each implemented table format (Column, XY, Grouped, Contingency, Survival, Parts of whole) that is valid for that format’s schema (`validateTableData` passes) and suitable for running at least one allowed analysis and creating at least one allowed graph type.
+- [x] **PRISM-TBL-022**: The system shall allow the user to create a new table pre-filled with sample data from the Sidebar (e.g. one control per format, such as “Sample Col”, “Sample XY”, and equivalent for Grouped, Contingency, Survival, Parts of whole—either as separate buttons or via a single “Sample” menu listing each format).
+- [x] **PRISM-TBL-023**: When the user chooses “Start with sample data” (or equivalent) in the New Table flow for a selected format, the system shall create the new table pre-filled with the sample data for that format.
+
 ---
 
 ## Analyses (PRISM-ANA)
@@ -84,7 +92,7 @@
 - [x] **PRISM-WKF-012**: The system shall allow the user to rename a table from the UI (sidebar or main view). The name shall be stored in project state and propagate everywhere the table is referenced (sidebar, main area title, export, NL context).
 - [D] **PRISM-WKF-009**: The system shall support "duplicate family" (duplicate a table and all linked analyses and graphs, then replace data in the new table).
 - [D] **PRISM-WKF-010**: The system shall support info/text sheets for project notes.
-- [ ] **PRISM-WKF-013**: The system shall allow one-click export of the current table's data, the statistical models and analyses run, and the chart(s) as a single Python script with [PEP 723](https://peps.python.org/pep-0723/) inline script metadata (dependencies, requires-python) so that the user can run `uv run script.py` to recreate the entire analysis and figures without the GUI. Export scope: at least one table plus its analyses and graphs; optional whole-project export. The script shall embed or load the data, run equivalent models/analyses (e.g. PyMC or scipy/statsmodels), and produce the same chart(s) (e.g. save figures to files).
+- [D] **PRISM-WKF-013**: The system shall allow one-click export of the current table's data and the statistical models/analyses as a **single package** (data + script). The script shall use [PEP 723](https://peps.python.org/pep-0723/) inline metadata so that the user can run `uv run script.py` to recreate the analysis and figures. *(Deferred: PyMC/Python runner and export script removed for current phase; may be reintroduced later.)*
 
 ---
 
@@ -92,11 +100,11 @@
 
 - [x] **PRISM-ANA-013**: The system shall support nonparametric alternatives (e.g. Mann-Whitney, Kruskal-Wallis, Wilcoxon, Friedman) for applicable table types.
 - [x] **PRISM-ANA-014**: The system shall implement all Prism analysis types applicable to each table format (including ROC, Bland–Altman, Deming regression, three-way ANOVA, and others as defined in the registry) so that the clone achieves full analysis parity with Prism. (Representative set implemented: ROC AUC, normality test; full parity phased.)
-- [ ] **PRISM-ANA-015**: When PyMC is available and the user runs an unpaired t-test, the system shall compute and display Bayesian posterior estimates (group mean CrIs, mean difference CrI, P(superiority)) alongside frequentist results (t, p, df, CI).
-- [ ] **PRISM-ANA-016**: When PyMC is available and the user runs a paired t-test, the system shall compute and display Bayesian posterior estimates alongside frequentist results.
+- [ ] **PRISM-ANA-015**: When the PyMC path is available (Electron: bundled uv + pre-templated scripts; browser: configured backend that runs the script) and the user runs an unpaired t-test, the system shall compute and display Bayesian posterior estimates (group mean CrIs, mean difference CrI, P(superiority)) alongside frequentist results. Implementation: fill template with data; Electron: write to disk, run `uv run script.py`, read ArviZ InferenceData; browser: send to backend, receive InferenceData or summary; extract summary and plot data, map to AnalysisResult (HLD §6 arrow of intent).
+- [ ] **PRISM-ANA-016**: When the PyMC path is available (Electron or backend) and the user runs a paired t-test, the system shall compute and display Bayesian posterior estimates alongside frequentist results (same uv + template + InferenceData pattern).
 - [ ] **PRISM-ANA-017**: The system shall use improper flat priors for Bayesian group comparisons (μ priors flat; σ priors half-flat) during concept validation, with the option to refine prior choice later.
 - [x] **PRISM-ANA-018**: When PyMC fails or is unavailable, the system shall fall forward to displaying frequentist results only (no error; Bayesian fields undefined).
-- [ ] **PRISM-ANA-019**: When PyMC is available and the user runs Kaplan–Meier (survival) analysis, the system shall compute and display Bayesian posterior summaries (e.g. posterior survival curves, median survival CrI, hazard ratio CrI when comparing two groups) alongside the frequentist Kaplan–Meier curve. When PyMC fails or is unavailable, the system shall display the TypeScript Kaplan–Meier result only (no error; Bayesian fields undefined).
+- [ ] **PRISM-ANA-019**: When the PyMC path is available (Electron or configured backend) and the user runs Kaplan–Meier (survival) analysis, the system shall compute and display Bayesian posterior summaries (e.g. posterior survival curves, median survival CrI, hazard ratio CrI when comparing two groups) alongside the frequentist Kaplan–Meier curve, using the same uv + templated script + InferenceData pattern. When PyMC fails or is unavailable, the system shall display the TypeScript Kaplan–Meier result only (no error; Bayesian fields undefined).
 
 ---
 
@@ -141,14 +149,46 @@ Work is split so subagents can run in parallel with minimal overlap:
 
 ---
 
+## Extended features (Prism Pro/Standard parity)
+
+**Source:** [GraphPad FAQ 2259](https://www.graphpad.com/support/faqid/2259/) — restricted features in Prism by plan; the clone enables them without licensing tiers. Design: [HLD § Extended features](../high-level-design.md), [LLDs](../llds/).
+
+### Tables — calculated variables (PRISM-TBL)
+
+- [ ] **PRISM-TBL-024**: When the Multiple variables format is implemented, the system shall allow defining calculated variables via in-table formulas (Excel-style); values shall update when input data or formulas change; formulas shall be evaluated in a restricted allowlist (no arbitrary code execution). Downstream results shall be cleared when formulas or inputs change (same hot-linking as transformations).
+
+### Analyses — MV, effect sizes, clustering, survival (PRISM-ANA)
+
+- [ ] **PRISM-ANA-020**: When the Multiple variables format exists, the system shall support multifactor (one-way through N-way) ANOVA from MV tables with main effects, interactions, and multiple comparisons without restructuring data.
+- [ ] **PRISM-ANA-021**: When the Multiple variables format exists, the system shall support classic analyses (t tests, nonlinear regression, Kaplan–Meier) from MV tables by designating response, predictor, and grouping variables; multiple response variables in one run where applicable.
+- [ ] **PRISM-ANA-022**: The system shall report enhanced effect sizes where applicable: for ANOVA (eta squared, partial eta squared, Cohen's f), for contingency analyses (Phi, Cramér's V), and for t tests (Cohen's d, Hedges' g, Glass's Δ).
+- [ ] **PRISM-ANA-023**: The system shall support K-means clustering with optional automatic cluster number selection (multiple metrics and consensus optimal k) when the table format supports it (e.g. Multiple variables).
+- [ ] **PRISM-ANA-024**: The system shall support hierarchical clustering when the table format supports it (e.g. Multiple variables); output usable for dendrograms and heat map ordering.
+- [ ] **PRISM-ANA-025**: When Kaplan–Meier analysis is run, the system shall optionally produce a number-at-risk table aligned with the survival graph (at-risk and optionally cumulative censored at each time point), updating when axis range/interval changes.
+- [ ] **PRISM-ANA-026**: When Kaplan–Meier analysis is run, the system shall allow the user to specify pairwise comparisons of survival curves and report results for each selected pair.
+
+### Graphs — heat map, dendrograms, ellipses, MV axes, decimals (PRISM-GPH)
+
+- [ ] **PRISM-GPH-011**: The system shall support heat maps from Multiple variables data (categorical X/Y + continuous metric or matrix view) and, when applicable, from Grouped data (e.g. cell means).
+- [ ] **PRISM-GPH-012**: The system shall support dendrograms as a graph type (from hierarchical clustering result), standalone or overlaid on heat map.
+- [ ] **PRISM-GPH-013**: The system shall allow optional confidence ellipses and convex hulls on scatter/XY graphs (per group or per series).
+- [ ] **PRISM-GPH-014**: When the graph is from a Multiple variables table, the system shall allow the user to assign which variable is X and which is Y (axis variable assignment) via options or Graph Inspector.
+- [ ] **PRISM-GPH-015**: The system shall allow axis label decimal places to be set from 0 up to 14 for numeric axis labels.
+
+### Workflows — per-axis title controls (PRISM-WKF)
+
+- [ ] **PRISM-WKF-014**: When the user applies style from example (Magic) or when wand copies graph setup, the system shall allow choosing which titles to update independently: X axis title, Y axis title, and/or graph title.
+
+---
+
 ## Traceability summary
 
 | Area      | Implemented | Active gap | Deferred |
 |-----------|-------------|------------|----------|
-| TBL       | 19          | 1          | 0        |
-| ANA       | 15          | 4          | 0        |
-| GPH       | 10          | 0          | 0        |
-| WKF       | 10          | 1          | 2        |
+| TBL       | 19          | 2          | 0        |
+| ANA       | 15          | 11         | 0        |
+| GPH       | 10          | 5          | 0        |
+| WKF       | 10          | 2          | 2        |
 | TRANSFORM | 9           | 0          | 0        |
 | UI (modal)| 5           | 0          | 0        |
 

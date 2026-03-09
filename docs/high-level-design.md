@@ -16,8 +16,7 @@
 2. **Build on dataplotter:** Extend the existing app (Zustand state, table/analysis/graph model, Plotly charts, NL chat, JSON save, Prism/Pzfx import) rather than replace it. Add missing table formats, analyses, and graph types in the same architecture.
 3. **Full analysis parity:** Reimplement all Prism analysis types (parametric and nonparametric: t-tests, ANOVA, regression, contingency, survival, dose-response, ROC, Bland–Altman, etc.) so the clone supports the same analyses as Prism, specified and phased in LLDs and EARS.
 4. **Prism file round-trip:** Support both import and export of .pzfx/.prism so users can open Prism projects and save back to Prism-compatible files.
-5. **Same technical constraints:** Single-page app (browser and/or desktop); no backend required; analyses run in the browser (current engine plus Bayesian layer; optional Pyodide/PyMC for richer models).
-6. **Reproducible analyses:** Enable one-click export of the current table’s data, models, statistical analyses, and chart(s) as a single Python script with [PEP 723](https://peps.python.org/pep-0723/) inline script metadata so that `uv run script.py` recreates the entire analysis and figures without the GUI.
+5. **Same technical constraints:** Single-page app (browser and/or desktop); no backend required; analyses run in the browser (TypeScript engine). A future optional Bayesian/PyMC path (Electron or backend) may be reintroduced later; for now all analyses use the TS engine with optional conjugate/Bayesian-style fields where applicable (e.g. descriptive meanCrI/meanSD).
 
 ---
 
@@ -57,6 +56,20 @@ The system stays the same as current dataplotter at the top level:
 - **Graph types:** Bar, grouped bar, scatter/line/scatterLine, dose-response, **survival** (step curves), **pie**; error bars, log axes, **two Y-axes**, **line of identity**; graph export **PNG/SVG**. Optional later: heat map, forest plot, box-and-whisker. See LLD graphs-and-charts.
 - **Data prep:** **Normality test** (Column) implemented. **In-table transformations** are in scope: users define column transformations via an equation (e.g. log10(y)), toggle between raw and transformed view in the table, and choose per-analysis and per-graph whether to use raw or transformed data; transformations stay linked to the same table (no new tables). See LLD [Transformations](llds/transformations.md). Transform, normalize, remove baseline, identify outliers (Phase 9). See LLD analyses-and-engine.
 - **Workflows:** **Layouts** (layout sheet, add/remove graphs, export layout PNG); **wand** (copy analysis/graph setup from one table to another); **rename table** (from sidebar or main UI; name in store propagates everywhere). Apply style from example and info sheets deferred. See LLD project-and-workflows.
+- **Sample data:** Each implemented table format (Column, XY, Grouped, Contingency, Survival, Parts of whole) has corresponding sample data that is valid for that format’s schema and suitable for at least one analysis and one graph. Users can create a new table pre-filled with sample data from the Sidebar or from the New Table flow. See LLD [Data tables and formats](llds/data-tables-and-formats.md) § Sample data.
+
+### Extended features (Prism Pro/Standard parity)
+
+GraphPad restricts some features by plan ([FAQ 2259](https://www.graphpad.com/support/faqid/2259/)). The clone has no licensing tiers; the following are in scope so users get a single, capable product.
+
+- **Multiple Variables (MV) table and analyses:** When the Multiple variables format is implemented: **calculated variables** from in-table formulas (Excel-style; values update when inputs change); **classic analyses from MV** (t tests, nonlinear regression, Kaplan–Meier) without restructuring; **multifactor ANOVA** (one-way through N-way) from MV tables with main effects, interactions, and multiple comparisons. LLD: Data tables, Analyses and engine.
+- **Effect sizes:** Enhanced reporting: for ANOVA (eta squared, partial eta squared, Cohen's f), contingency (Phi, Cramér's V), and t tests (Cohen's d, Hedges' g, Glass's Δ). LLD: Analyses and engine.
+- **Clustering and ML:** K-means clustering (with optional **automatic cluster number selection** via multiple metrics and consensus); **hierarchical clustering**; **dendrograms** as graph type. LLD: Analyses and engine, Graphs and charts.
+- **Survival enhancements:** **Number at risk table** aligned with Kaplan–Meier graph (at-risk and optionally censored counts per time point); **pairwise comparisons** for selected survival curves. LLD: Analyses and engine, Graphs and charts.
+- **Graphs from MV and visuals:** **Heat maps** from Multiple variables (categorical X/Y + continuous metric, or matrix view); **confidence ellipses** and **convex hulls** on scatter/XY graphs; **axis variable assignment** for MV graphs (choose which variable is X/Y); axis label **decimal places** up to 14. LLD: Graphs and charts.
+- **Wand / Magic:** When copying analysis/graph setup (wand) or applying style from example (Magic), **per-axis title controls** (update X axis title, Y axis title, or graph title independently). LLD: Project and workflows.
+
+**Out of scope:** Dotmatics Luma integration (external platform); no plan to replicate it.
 
 ---
 
@@ -70,7 +83,7 @@ The system stays the same as current dataplotter at the top level:
 | **Persistence** | JSON save/load plus Prism/Pzfx import and export. | Round-trip with Prism files is in scope; JSON remains the native format. |
 | **Table interaction** | Excel-like keyboard-driven grid: arrow keys to move between cells, Enter to enter/edit cell, Escape to cancel edit, Tab for next cell. | Users who work with data entry expect spreadsheet-style navigation and editing; current click-and-blur-only behavior is insufficient. Specified in LLD and EARS. |
 | **Scope of “clone”** | Full analysis parity (all Prism analysis types reimplemented); Prism-like workflow and table/graph semantics; UI can evolve. | Clone supports the same analyses as Prism; implementation is phased via LLDs and EARS. |
-| **Reproducible export** | One-click export as a single .py script (PEP 723 inline metadata) embedding data, model/analysis code, and chart generation; runnable with `uv run` to reproduce the analysis. | Encourages reproducibility and sharing; script is self-contained (dependencies in metadata; no backend). See LLD project-and-workflows and EARS PRISM-WKF-013. |
+| **Reproducible export** | Deferred. One-click export of data + script (PEP 723) may be reintroduced later. | JSON and Prism/Pzfx export remain; script export out of scope for current phase. |
 
 ---
 
@@ -90,22 +103,9 @@ The system stays the same as current dataplotter at the top level:
 
 ---
 
-## 6. Side-by-side frequentist and Bayesian analysis layer
+## 6. Analysis layer (frequentist + optional Bayesian-style fields)
 
-Statistical analyses in the clone provide **both frequentist and Bayesian results side-by-side**: traditional test statistics (t, F, p-values, CIs) plus posterior summaries and credible intervals when PyMC is available. This dual approach serves users who want classical hypothesis testing alongside Bayesian estimation.
-
-**Architecture:**
-
-- **Single entry point:** UI and NL continue to call `runAnalysis()` (sync) or `runAnalysisAsync()` (async). The engine computes frequentist results synchronously; when PyMC loads, it extends the same result with Bayesian fields.
-- **Result types:** Existing `AnalysisResult` variants are extended with optional Bayesian fields (e.g. `meanDiffCrI`, `pSuperiority`, posterior SDs). Same result shape for charts and UI; Bayesian fields are populated when PyMC completes.
-- **Implementation path:** 
-  - **Frequentist:** TypeScript implementations using jStat (existing path, synchronous).
-  - **Bayesian:** Pyodide + PyMC (CPython in WASM), loaded on demand. Async only via `runAnalysisAsync()`. Uses improper flat priors initially (concept validation); prior choice can be refined later.
-  - **Fall-forward:** When PyMC fails or is unavailable, UI shows frequentist results only. When PyMC succeeds, both sections display.
-- **Scope:** Descriptive, t-tests (unpaired/paired), one-way ANOVA, linear regression, dose-response 4PL get Bayesian extensions. **Survival (Kaplan–Meier)** gets a Bayesian path via PyMC: when PyMC is available, survival analysis may include posterior survival curves and credible intervals (e.g. median survival CrI, hazard ratio CrI for two groups); the existing TypeScript Kaplan–Meier remains the frequentist/fallback path. Result types carry optional posterior/credible output. Detailed task breakdown in `docs/plans/2025-03-05-bayesian-by-default.md`.
-- **Group comparison terminology:** Analyses traditionally called "t-tests" are also described as "group comparisons" in Bayesian context (following Kruschke's BEST: "Bayesian Estimation Supersedes the t-Test"). The analysis type IDs remain `unpaired_ttest` and `paired_ttest` for backward compatibility; Bayesian outputs focus on posterior means, differences, and P(superiority) rather than t-statistics.
-
-**Current codebase:** HLD assumes dataplotter's existing architecture (see [reference/architecture.md](reference/architecture.md)). LLDs and EARS detail changes per component.
+Analyses run in TypeScript only. The engine provides **frequentist results** (t, F, p-values, CIs) and, where implemented, **optional Bayesian-style fields** (e.g. descriptive: meanCrI, meanSD via conjugate Normal–Normal in TS). No PyMC or Python runner is used; a future optional Bayesian/PyMC path (Electron or backend) may be reintroduced. Result types in `analysis.ts` retain optional fields (e.g. `meanDiffCrI`, `pDiffPositive`) for compatibility; they are populated only by TS approximations when present.
 
 ---
 

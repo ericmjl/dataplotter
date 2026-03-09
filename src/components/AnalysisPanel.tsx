@@ -158,6 +158,8 @@ function AnalysisResultTable({ result }: { result: import('../types').AnalysisRe
     );
   }
   if (result.type === 'unpaired_ttest') {
+    const hasCrI = result.meanDiffCrI != null;
+    const hasPdiff = result.pDiffPositive != null;
     return (
       <table className="data-grid" aria-label="Unpaired t-test results">
         <tbody>
@@ -166,7 +168,13 @@ function AnalysisResultTable({ result }: { result: import('../types').AnalysisRe
           <tr><td>df</td><td>{result.df.toFixed(1)}</td></tr>
           <tr><td>Mean ({result.label1})</td><td>{result.mean1.toFixed(4)}</td></tr>
           <tr><td>Mean ({result.label2})</td><td>{result.mean2.toFixed(4)}</td></tr>
-          <tr><td>95% CI</td><td>[{result.ci[0].toFixed(4)}, {result.ci[1].toFixed(4)}]</td></tr>
+          <tr>
+            <td>{hasCrI ? '95% CrI (diff)' : '95% CI'}</td>
+            <td>[{result.ci[0].toFixed(4)}, {result.ci[1].toFixed(4)}]</td>
+          </tr>
+          {hasPdiff && (
+            <tr><td>P(μ₁ &gt; μ₂)</td><td>{result.pDiffPositive!.toFixed(4)}</td></tr>
+          )}
         </tbody>
       </table>
     );
@@ -185,15 +193,31 @@ function AnalysisResultTable({ result }: { result: import('../types').AnalysisRe
     );
   }
   if (result.type === 'one_way_anova') {
+    const hasCrI = result.groupMeans.some((g) => g.meanCrI != null);
     return (
       <table className="data-grid" aria-label="One-way ANOVA results">
+        {hasCrI && (
+          <thead>
+            <tr><th>Statistic</th><th>Value</th><th>95% CrI (mean)</th></tr>
+          </thead>
+        )}
         <tbody>
-          <tr><td>F</td><td>{result.f.toFixed(4)}</td></tr>
-          <tr><td>p</td><td>{result.p.toFixed(4)}</td></tr>
-          <tr><td>df (between)</td><td>{result.dfBetween}</td></tr>
-          <tr><td>df (within)</td><td>{result.dfWithin}</td></tr>
+          <tr><td>F</td><td colSpan={hasCrI ? 2 : 1}>{result.f.toFixed(4)}</td></tr>
+          <tr><td>p</td><td colSpan={hasCrI ? 2 : 1}>{result.p.toFixed(4)}</td></tr>
+          <tr><td>df (between)</td><td colSpan={hasCrI ? 2 : 1}>{result.dfBetween}</td></tr>
+          <tr><td>df (within)</td><td colSpan={hasCrI ? 2 : 1}>{result.dfWithin}</td></tr>
           {result.groupMeans.map((g) => (
-            <tr key={g.label}><td>Mean ({g.label})</td><td>{g.mean.toFixed(4)}</td></tr>
+            <tr key={g.label}>
+              <td>Mean ({g.label})</td>
+              <td>{g.mean.toFixed(4)}</td>
+              {hasCrI && (
+                <td>
+                  {g.meanCrI != null
+                    ? `[${g.meanCrI[0].toFixed(4)}, ${g.meanCrI[1].toFixed(4)}]`
+                    : '—'}
+                </td>
+              )}
+            </tr>
           ))}
         </tbody>
       </table>
@@ -235,15 +259,33 @@ function AnalysisResultTable({ result }: { result: import('../types').AnalysisRe
     );
   }
   if (result.type === 'kaplan_meier') {
+    function medianFromCurve(time: number[], survival: number[]): number | null {
+      const i = survival.findIndex((s) => s <= 0.5);
+      if (i < 0) return null;
+      if (i === 0) return time[0] ?? null;
+      const t0 = time[i - 1]!;
+      const t1 = time[i]!;
+      const s0 = survival[i - 1]!;
+      const s1 = survival[i]!;
+      if (s0 === s1) return t1;
+      const f = (0.5 - s0) / (s1 - s0);
+      return t0 + f * (t1 - t0);
+    }
     return (
       <table className="data-grid" aria-label="Kaplan–Meier results">
+        <thead>
+          <tr><th>Summary</th><th>Value</th></tr>
+        </thead>
         <tbody>
-          {result.curves.map((cur) => (
-            <tr key={cur.group}>
-              <td>Curve ({cur.group})</td>
-              <td>{cur.time.length} points</td>
-            </tr>
-          ))}
+          {result.curves.map((cur) => {
+            const median = medianFromCurve(cur.time, cur.survival);
+            return (
+              <tr key={cur.group}>
+                <td>Median survival ({cur.group})</td>
+                <td>{median != null ? median.toFixed(2) : '—'}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     );

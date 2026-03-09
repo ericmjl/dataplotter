@@ -69,6 +69,8 @@ Per the [Prism user guide](https://www.graphpad.com/guides/prism/latest/user-gui
 - `variableLabels: string[]`
 - `rows: (number | null)[][]` — rows[i] = values for case i across variables. No subcolumns; used for correlation matrix, multiple regression, etc.
 
+**Calculated variables (Multiple variables, when implemented):** Prism 11 Pro/Enterprise allows [in-table formulas](https://www.graphpad.com/support/faqid/2259/) to define new variables from existing columns (Excel-style). Values update when input data or formulas change. For the clone, when the Multiple variables format is implemented, support optional calculated columns: formula metadata per column, evaluation in a restricted allowlist (no arbitrary code), and same hot-linking as transformations (clear downstream results when formulas or inputs change). Design can mirror the Transformations LLD pattern (resolver returns effective table including calculated columns). Phased with MV format; see HLD § Extended features.
+
 ---
 
 ## Registry contract
@@ -128,6 +130,41 @@ Header cells (column names, group headers): if they are editable (e.g. Column ta
 
 - Applies to all editable data grids: Column/XY (DataGrid), Grouped, Contingency, Survival (wide and tidy), Parts of whole. Read-only views (e.g. transformed view, tidy view for column/xy when read-only) may show the same grid structure but without edit mode; arrow keys can still move focus for review.
 - Special grids (e.g. Survival with group columns, or cells that are dropdowns) still follow the same Navigate vs Edit model: in Navigate, arrow keys move; Enter/F2 enter edit; in Edit, the control (input, select) has focus and Escape cancels, Enter/Tab commit and move.
+
+---
+
+## Sample data for each table type
+
+**Goal:** For every implemented table format, the system provides one sample dataset so users can create a table pre-filled with valid, analysis-ready data (tutorials, quick start, exploring analyses/graphs). See HLD §3 “Sample data”.
+
+### Location and contract
+
+- **Location:** Sample data lives under `src/data/`. Existing: `sampleColumn.ts`, `sampleXY.ts`. New modules: `sampleGrouped.ts`, `sampleContingency.ts`, `sampleSurvival.ts`, `samplePartsOfWhole.ts`.
+- **Per-format contract:** Each module exports:
+  - `sample<Format>Data`: the data object matching that format’s type (e.g. `GroupedTableData`, `SurvivalTableData`).
+  - `sample<Format>Name`: a short display name string (e.g. `"Sample grouped table"`).
+- **Central entry point:** A single module (e.g. `src/data/sampleDataIndex.ts`) exports a map or list of `{ format, name, data }` for all implemented formats so the UI can enumerate “add table from sample” options without importing each file by format ID.
+
+### Content guidelines per format
+
+- **Column:** Already exists (e.g. Control vs Treated, a few replicates per column). Suitable for descriptive, t-test, one-way ANOVA.
+- **XY:** Already exists (e.g. Dose vs Response). Suitable for regression, dose-response.
+- **Grouped:** Two row groups × two column groups, a few replicates per cell. Example: Male/Female × Control/Treated. Suitable for two-way ANOVA and grouped bar chart.
+- **Contingency:** Small 2×2 or 2×3 count table with meaningful row/column labels (e.g. Treatment A/B × Response Yes/No). Suitable for Chi-square and Fisher’s exact.
+- **Survival:** A small set of (time, event) pairs; optional group (e.g. Drug vs Placebo). At least one event and one censored value. Suitable for Kaplan–Meier and survival graph.
+- **Parts of whole:** A few labels and values that sum to 100 (or another whole). Suitable for fraction-of-total analysis and pie chart.
+
+All sample data must pass `validateTableData(format, data)` for that format.
+
+### UI exposure
+
+- **Sidebar:** The Sidebar shall offer a way to add a table from sample for each implemented format. Options: (a) one button per format (current pattern: “Sample Col”, “Sample XY”), or (b) a single “Sample” control that opens a menu or dropdown listing each format (e.g. “Column”, “XY”, “Grouped”, …). Choice (b) scales better as formats grow; (a) is already in place for Column and XY. Recommendation: keep Column and XY as quick buttons if desired; add a “More samples…” dropdown or menu for Grouped, Contingency, Survival, Parts of whole, or unify all into one “Sample” menu.
+- **NewTableDialog (optional):** When the user selects a format in the “New table” dialog, an option “Start with sample data” (or “Use sample data”) can pre-fill the new table with the sample for that format. This is a natural place for tutorials (“create a Grouped table with sample data”). Can be implemented in the same phase or a follow-on.
+
+### Out of scope
+
+- Multiple sample variants per format (e.g. “Sample Column A” vs “Sample Column B”) are not required for this feature.
+- Deferred formats (Multiple variables, Nested) do not get sample data until those formats are implemented.
 
 ---
 

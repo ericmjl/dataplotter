@@ -45,10 +45,18 @@ export function runUnpairedTtest(
   const sem2 = v2.length > 1 ? jStat.stdev(v2, true) / Math.sqrt(v2.length) : 0;
   const seDiff = Math.sqrt(sem1 * sem1 + sem2 * sem2);
   const tCrit = seDiff > 0 ? jStat.studentt.inv(0.975, df) : 0;
+  const meanDiff = mean1 - mean2;
   const ci: [number, number] = [
-    mean1 - mean2 - tCrit * seDiff,
-    mean1 - mean2 + tCrit * seDiff,
+    meanDiff - tCrit * seDiff,
+    meanDiff + tCrit * seDiff,
   ];
+  // Bayesian-style: treat CI as credible interval; P(μ1 > μ2) via normal approximation
+  const meanDiffCrI: [number, number] = ci;
+  let pDiffPositive: number | undefined;
+  if (seDiff > 0 && Number.isFinite(meanDiff)) {
+    const z = meanDiff / seDiff;
+    pDiffPositive = jStat.normal.cdf(z, 0, 1);
+  }
   return {
     type: 'unpaired_ttest',
     t,
@@ -57,6 +65,8 @@ export function runUnpairedTtest(
     mean1,
     mean2,
     ci,
+    meanDiffCrI,
+    pDiffPositive,
     label1: columnLabels[0],
     label2: columnLabels[1],
   };

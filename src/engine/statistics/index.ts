@@ -33,9 +33,6 @@ import { runMultipleRegression } from './multipleRegression';
 import { runNestedTtest } from './nestedTtest';
 import { runNestedOneWayAnova } from './nestedOneWayAnova';
 import { addDescriptiveBayesianFields } from '../bayesian/descriptive';
-import { getPyodide, runDescriptivePyMC } from '../pymc/descriptive';
-import { runRegressionPyMC } from '../pymc/regression';
-import { runDoseResponse4plPyMC } from '../pymc/doseResponse4pl';
 
 export type TableDataForAnalysis =
   | ColumnTableData
@@ -61,33 +58,36 @@ export function runAnalysis(
   if (analysisType === 'descriptive') {
     if (format === 'column' && 'columnLabels' in tableData && !('counts' in tableData)) {
       const colData = tableData as ColumnTableData;
+      const base = runDescriptive(
+        colData.columnLabels,
+        colData.rows,
+        colData.groupLabels,
+        colData.groupForColumn
+      );
       return {
         ok: true,
-        value: runDescriptive(
-          colData.columnLabels,
-          colData.rows,
-          colData.groupLabels,
-          colData.groupForColumn
-        ),
+        value: addDescriptiveBayesianFields(base) as AnalysisResult,
       };
     }
     if (format === 'multipleVariables' && 'variableLabels' in tableData) {
       const mv = tableData as MultipleVariablesTableData;
+      const base = runDescriptive(mv.variableLabels, mv.rows, undefined, undefined);
       return {
         ok: true,
-        value: runDescriptive(mv.variableLabels, mv.rows, undefined, undefined),
+        value: addDescriptiveBayesianFields(base) as AnalysisResult,
       };
     }
     if (format === 'nested' && 'columnLabels' in tableData && !('counts' in tableData)) {
       const nested = tableData as NestedTableData;
+      const base = runDescriptive(
+        nested.columnLabels,
+        nested.rows,
+        nested.groupLabels,
+        nested.groupForColumn
+      );
       return {
         ok: true,
-        value: runDescriptive(
-          nested.columnLabels,
-          nested.rows,
-          nested.groupLabels,
-          nested.groupForColumn
-        ),
+        value: addDescriptiveBayesianFields(base) as AnalysisResult,
       };
     }
     return { ok: false, error: 'Descriptive analysis requires column, multiple variables, or nested table.' };
@@ -341,10 +341,8 @@ export function runAnalysis(
 }
 
 /**
- * Async entry point for analyses (HLD §6). Defaults to PyMC in WASM for Bayesian models:
- * descriptive, linear regression, dose-response 4PL. Falls back to sync runAnalysis (TS) only
- * when Pyodide/PyMC is unavailable or fails.
- * @spec PRISM-ANA-001 through PRISM-ANA-005 (Bayesian by default)
+ * Async entry point for analyses (HLD §6). Uses TS implementations only; descriptive gets
+ * optional Bayesian-style fields (meanCrI, meanSD) via conjugate Normal-Normal in TS.
  */
 export async function runAnalysisAsync(
   format: TableFormatId,
@@ -362,25 +360,6 @@ export async function runAnalysisAsync(
       const mv = tableData as MultipleVariablesTableData;
       const base = runDescriptive(mv.variableLabels, mv.rows, undefined, undefined);
       if (base.type !== 'descriptive') return { ok: true, value: base };
-      try {
-        const pyodide = await getPyodide();
-        if (pyodide) {
-          const columnValues = mv.variableLabels.map((_, c) =>
-            mv.rows
-              .map((r) => r[c])
-              .filter((v): v is number => v != null && Number.isFinite(v))
-          );
-          const bayesianRows = await runDescriptivePyMC(pyodide, mv.variableLabels, columnValues);
-          const byColumn = base.byColumn.map((col, i) => ({
-            ...col,
-            meanCrI: bayesianRows[i]?.meanCrI,
-            meanSD: bayesianRows[i]?.meanSD,
-          }));
-          return { ok: true, value: { type: 'descriptive', byColumn } };
-        }
-      } catch (_) {
-        // fall through
-      }
       return { ok: true, value: addDescriptiveBayesianFields(base) as AnalysisResult };
     }
     if (format === 'nested' && 'columnLabels' in tableData && !('counts' in tableData)) {
@@ -399,53 +378,6 @@ export async function runAnalysisAsync(
       colData.groupForColumn
     );
     if (base.type !== 'descriptive') return { ok: true, value: base };
-
-    const hasGroups =
-      colData.groupLabels?.length &&
-      colData.groupForColumn?.length === colData.columnLabels.length;
-    let columnLabels: string[];
-    let columnValues: number[][];
-    if (hasGroups && colData.groupLabels && colData.groupForColumn) {
-      columnLabels = colData.groupLabels;
-      columnValues = colData.groupLabels.map((_, g) => {
-        const vals: number[] = [];
-        colData.rows.forEach((r) => {
-          colData.columnLabels.forEach((_, c) => {
-            if (colData.groupForColumn![c] === g) {
-              const v = r[c];
-              if (v != null && Number.isFinite(v)) vals.push(v);
-            }
-          });
-        });
-        return vals;
-      });
-    } else {
-      columnLabels = colData.columnLabels;
-      columnValues = colData.columnLabels.map((_, c) =>
-        colData.rows
-          .map((r) => r[c])
-          .filter((v): v is number => v != null && Number.isFinite(v))
-      );
-    }
-
-    try {
-      const pyodide = await getPyodide();
-      if (pyodide) {
-        const bayesianRows = await runDescriptivePyMC(
-          pyodide,
-          columnLabels,
-          columnValues
-        );
-        const byColumn = base.byColumn.map((col, i) => ({
-          ...col,
-          meanCrI: bayesianRows[i]?.meanCrI,
-          meanSD: bayesianRows[i]?.meanSD,
-        }));
-        return { ok: true, value: { type: 'descriptive', byColumn } };
-      }
-    } catch (_) {
-      // Fall through to TS conjugate
-    }
     return {
       ok: true,
       value: addDescriptiveBayesianFields(base) as AnalysisResult,
@@ -453,118 +385,24 @@ export async function runAnalysisAsync(
   }
 
   if (analysisType === 'linear_regression') {
-    if (format !== 'xy' || !('x' in tableData)) {
-      return { ok: false, error: 'Linear regression requires XY table.' };
-    }
-    const opts = options as { type: 'linear_regression'; ySeriesLabel?: string };
-    let yIdx = 0;
-    if (opts.ySeriesLabel) {
-      const idx = tableData.yLabels.indexOf(opts.ySeriesLabel);
-      if (idx === -1) {
-        return { ok: false, error: `Y series "${opts.ySeriesLabel}" not found.` };
-      }
-      yIdx = idx;
-    }
-    const xRaw = tableData.x;
-    const yRaw = tableData.ys[yIdx] ?? [];
-    const pairs: { x: number; y: number }[] = [];
-    for (let i = 0; i < xRaw.length; i++) {
-      const xi = xRaw[i];
-      const yi = yRaw[i];
-      if (
-        xi != null && Number.isFinite(xi) &&
-        yi != null && Number.isFinite(yi)
-      ) {
-        pairs.push({ x: xi, y: yi });
-      }
-    }
-    if (pairs.length < 2) {
-      return { ok: true, value: runLinearRegression(xRaw, yRaw) };
-    }
-    const xArr = pairs.map((p) => p.x);
-    const yArr = pairs.map((p) => p.y);
-    try {
-      const pyodide = await getPyodide();
-      if (pyodide) {
-        const result = await runRegressionPyMC(pyodide, xArr, yArr);
-        return {
-          ok: true,
-          value: {
-            type: 'linear_regression',
-            slope: result.slope,
-            intercept: result.intercept,
-            r2: result.r2,
-            p: result.p,
-            slopeCI: result.slopeCI,
-            interceptCI: result.interceptCI,
-            curve: result.curve,
-          },
-        };
-      }
-    } catch (_) {
-      // fall through to TS
-    }
     return Promise.resolve(
       runAnalysis(format, 'linear_regression', tableData, options)
     );
   }
 
   if (analysisType === 'dose_response_4pl') {
-    if (format !== 'xy' || !('x' in tableData)) {
-      return { ok: false, error: '4PL dose-response requires XY table.' };
-    }
-    const opts = options as { type: 'dose_response_4pl'; logX: boolean };
-    const xRaw = tableData.x;
-    const yRaw = tableData.ys[0] ?? [];
-    const pairs: { x: number; y: number }[] = [];
-    for (let i = 0; i < xRaw.length; i++) {
-      const xi = xRaw[i];
-      const yi = yRaw[i];
-      if (
-        xi != null && Number.isFinite(xi) &&
-        yi != null && Number.isFinite(yi)
-      ) {
-        pairs.push({ x: xi, y: yi });
-      }
-    }
-    if (pairs.length < 4) {
-      return Promise.resolve(
-        runAnalysis(format, 'dose_response_4pl', tableData, options)
-      );
-    }
-    const xArr = pairs.map((p) => p.x);
-    const yArr = pairs.map((p) => p.y);
-    try {
-      const pyodide = await getPyodide();
-      if (pyodide) {
-        const result = await runDoseResponse4plPyMC(
-          pyodide,
-          xArr,
-          yArr,
-          opts.logX
-        );
-        return {
-          ok: true,
-          value: {
-            type: 'dose_response_4pl',
-            ec50: result.ec50,
-            ec50CI: result.ec50CI,
-            bottom: result.bottom,
-            top: result.top,
-            hillSlope: result.hillSlope,
-            curve: result.curve,
-            bottomCI: result.bottomCI,
-            topCI: result.topCI,
-            hillSlopeCI: result.hillSlopeCI,
-          },
-        };
-      }
-    } catch (_) {
-      // fall through to TS
-    }
     return Promise.resolve(
       runAnalysis(format, 'dose_response_4pl', tableData, options)
     );
+  }
+
+  if (analysisType === 'kaplan_meier') {
+    if (format !== 'survival' || !('times' in tableData)) {
+      return { ok: false, error: 'Kaplan–Meier requires survival table.' };
+    }
+    const survData = tableData as SurvivalTableData;
+    const base = runKaplanMeier(survData);
+    return { ok: true, value: base };
   }
 
   return Promise.resolve(runAnalysis(format, analysisType, tableData, options));

@@ -14,7 +14,8 @@
     "test:e2e:open": "cypress open",
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "cross-env ELECTRON=1 npm run build && electron-builder"
+    "electron:build": "cross-env ELECTRON=1 npm run build && electron-builder",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",
@@ -71,6 +72,13 @@
     "files": [
       "dist",
       "electron"
+    ],
+    "extraResources": [
+      {
+        "from": "python",
+        "to": "python",
+        "filter": ["**/*.py"]
+      }
     ],
     "publish": "github",
     "mac": {

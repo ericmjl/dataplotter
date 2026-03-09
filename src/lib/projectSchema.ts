@@ -167,6 +167,7 @@ const KaplanMeierResultSchema = z.object({
     })
   ),
   medianSurvival: z.array(z.object({ group: z.string(), median: z.number() })).optional(),
+  medianSurvivalCrI: z.tuple([z.number(), z.number()]).optional(),
 });
 
 const FractionOfTotalResultSchema = z.object({

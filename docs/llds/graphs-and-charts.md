@@ -63,6 +63,14 @@ Graphs are built from table data and optionally an analysis result (e.g. regress
 - **Line of identity:** Implemented. GraphOptions.showLineOfIdentity adds X=Y trace for XY/scatter/line graphs.
 - **Box-and-whisker:** For Column or XY with replicates, offer “box-and-whiskers” as an appearance option (Plotly box trace). In scope; Phase 9.
 - **Annotations:** Already in GraphOptions; included in export (PNG/SVG) per existing behavior.
+- **Axis label decimal places:** Allow up to 14 decimal places for numeric axis labels (Prism 10.5 Standard; [FAQ 2259](https://www.graphpad.com/support/faqid/2259/)). GraphOptions: e.g. `axisLabelDecimals?: number` (0–14).
+
+**Extended visuals (Prism Pro/Standard parity, [FAQ 2259](https://www.graphpad.com/support/faqid/2259/)):**
+
+- **Heat map:** From Multiple variables: (a) categorical X and Y variables + continuous metric, or (b) treat MV table as matrix (rows/columns as axis variables). When Grouped exists, heat map from cell means (or similar) remains an option. LLD: add `heatmap` graph type; adapter produces Plotly heatmap trace.
+- **Dendrograms:** From hierarchical clustering result; standalone graph or overlaid on heat map rows/columns. New graph type or trace type; registry allows for multipleVariables (and optionally column/xy when clustering is offered).
+- **Confidence ellipses and convex hulls:** For scatter/XY graphs: optional overlay of confidence ellipses (e.g. 95% for population parameters) or convex hulls per group. GraphOptions: e.g. `showConfidenceEllipse?: boolean`, `showConvexHull?: boolean`, per series or per group.
+- **Axis variable assignment (MV graphs):** When graph is from Multiple variables table, Graph Inspector (or options) lets user choose which variable is X and which is Y (or cycle through variables). Enables flexible XY plots from the same MV table without restructuring. Store in GraphOptions (e.g. `xVariableId`, `yVariableId` or variable labels).
 
 ---
 
@@ -84,7 +92,7 @@ Graphs are built from table data and optionally an analysis result (e.g. regress
 
 1. **Grouped/stacked bar layout:** Exact trace structure (one trace per group vs one trace with multiple series) and layout (bargap, barmode) when Grouped format exists.
 2. **Forest plot:** Specialized column graph (odds ratio + CI; median+range display, horizontal, log X, line at 1). In scope when Column/analyses support it; Phase 9 optional.
-3. **Heat map:** Grouped table (no subcolumns or mean/median/SD of replicates); color-coded cells. In scope when Grouped format exists; Phase 9 optional.
+3. **Heat map:** From Grouped (cell means) or from Multiple variables (categorical X/Y + metric, or matrix view). See Extended visuals above and HLD § Extended features; Phase 9 or with MV format.
 
 ---
 

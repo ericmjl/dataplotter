@@ -1,6 +1,11 @@
 const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
-const { autoUpdater } = require('electron-updater');
+let autoUpdater;
+try {
+  autoUpdater = require('electron-updater').autoUpdater;
+} catch {
+  autoUpdater = null;
+}
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
@@ -39,7 +44,7 @@ function createWindow() {
 }
 
 function setupAutoUpdater() {
-  if (isDev) return;
+  if (isDev || !autoUpdater) return;
 
   autoUpdater.logger = console;
   autoUpdater.autoDownload = false;

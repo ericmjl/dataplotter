@@ -8,7 +8,7 @@
 
 ## Context and design philosophy
 
-The analysis engine turns table data + analysis type + options into a result (or an error). All analyses go through a single entry point, `runAnalysis()`, so the UI and NL layer do not branch on implementation details. Result types are a discriminated union keyed by `type`; options are a discriminated union keyed by analysis type. The registry determines which analyses are allowed per table format. Full analysis parity with Prism is in scope (HLD): all Prism analysis types are to be reimplemented, phased via EARS. Bayesian-by-default is part of the HLD (§6): analyses use Bayesian estimation by default; this LLD describes the engine and result shapes that support both full parity and Bayesian outputs.
+The analysis engine turns table data + analysis type + options into a result (or an error). All analyses go through a single entry point, `runAnalysis()`, so the UI and NL layer do not branch on implementation details. Result types are a discriminated union keyed by `type`; options are a discriminated union keyed by analysis type. The registry determines which analyses are allowed per table format. Full analysis parity with Prism is in scope (HLD): all Prism analysis types are to be reimplemented, phased via EARS. Optional Bayesian-style result fields (e.g. descriptive meanCrI/meanSD) are supported in TS where implemented; no PyMC or Python runner is used (HLD §6).
 
 ---
 
@@ -49,39 +49,21 @@ Analyses that need table data from a specific format: Column (descriptive, t-tes
 
 ---
 
-## Bayesian result fields (side-by-side with frequentist)
+## Optional Bayesian-style result fields
 
-Analyses that support Bayesian estimation (via PyMC) include optional Bayesian fields in their result types. These fields are populated when PyMC completes successfully; otherwise, only frequentist fields are present.
+Result types retain optional fields (e.g. descriptive `meanCrI`, `meanSD`; unpaired_ttest `meanDiffCrI`, `pDiffPositive`) for compatibility. These are populated only by TypeScript implementations (e.g. conjugate Normal–Normal for descriptive); no PyMC or Python runner is used. A future Bayesian/PyMC path may reintroduce these via a script runner.
 
-**unpaired_ttest / paired_ttest (group comparisons):**
-- `mean1CrI?: [number, number]` — 95% credible interval for group 1 mean
-- `mean2CrI?: [number, number]` — 95% credible interval for group 2 mean
-- `meanDiffCrI?: [number, number]` — 95% credible interval for mean difference
-- `pSuperiority?: number` — P(μ₁ > μ₂), probability that group 1 mean exceeds group 2
-- `effectSize?: number` — Cohen's d (posterior mean)
-- `effectSizeCrI?: [number, number]` — 95% CrI for Cohen's d
+**unpaired_ttest / paired_ttest:** Optional `meanDiffCrI`, `pDiffPositive` (TS approximation when present).
 
-**Implementation notes:**
-- PyMC model uses improper flat priors (concept validation phase)
-- Posterior samples: μ₁, μ₂ ~ Normal(μ, σ) with flat priors on means, half-flat on σs
-- Async only: `runAnalysisAsync()` loads PyMC and extends the frequentist result
+**descriptive:** Optional `meanCrI`, `meanSD` per column (TS conjugate fallback in `src/engine/bayesian/descriptive.ts`).
 
 ---
 
-## Bayesian survival analysis (PyMC)
+## Survival (Kaplan–Meier)
 
-**Goal (HLD §6):** When PyMC is available, survival (Kaplan–Meier) analysis may include a Bayesian path: posterior survival curves and credible intervals, so users get both the classic Kaplan–Meier curve and Bayesian summaries (e.g. median survival CrI, hazard ratio CrI when comparing two groups).
+**Current state:** Kaplan–Meier is implemented in TypeScript only (`src/engine/statistics/kaplanMeier.ts`). Result type `kaplan_meier` has `curves: { group, time, survival }[]`. Optional `medianSurvivalCrI` is not populated (no PyMC path).
 
-**Current state:** Kaplan–Meier is implemented in TypeScript only (`src/engine/statistics/kaplanMeier.ts`); no PyMC survival path exists. Result type `kaplan_meier` has `curves: { group, time, survival }[]`.
-
-**Target design:**
-
-1. **Model choice:** A parametric or semi-parametric survival model in PyMC (e.g. Weibull survival, or piecewise exponential) that takes (time, event) per subject and optional group. Output: posterior samples of survival function (and optionally hazard), median survival, and—for two groups—hazard ratio with CrI.
-2. **Result extension:** Extend `kaplan_meier` result with optional Bayesian fields, e.g. `medianSurvivalCrI?: [number, number]` (or per-group), `hazardRatioCrI?: [number, number]` when two groups, and optionally `posteriorSurvivalCurves?:` (summary curves with uncertainty bands). Same result shape for charts and UI; Bayesian fields populated when PyMC completes.
-3. **Engine flow:** In `runAnalysisAsync()`, when `analysisType === 'kaplan_meier'` and format is survival: run TS Kaplan–Meier first (frequentist result); if Pyodide/PyMC is available, run PyMC survival script and merge posterior summaries into the result; otherwise leave Bayesian fields undefined. Fall-forward: if PyMC fails or is unavailable, return frequentist-only result (no error).
-4. **Implementation:** New module `src/engine/pymc/survival.ts` (or similar) that accepts SurvivalTableData, runs a PyMC survival model (script string or API), and returns the posterior summaries to merge. Same loader/runner pattern as `descriptive.ts`, `regression.ts`, `doseResponse4pl.ts`.
-
-**Traceability:** EARS PRISM-ANA-019 (Bayesian survival with PyMC); implementation plan phase for “Bayesian survival”.
+**Traceability:** EARS PRISM-ANA-019 deferred (no PyMC path).
 
 ---
 
@@ -112,6 +94,25 @@ Full analysis parity with Prism is in scope. All analysis types that Prism offer
 | xy (extend) | Deming (model II) regression; spline/LOWESS; AUC; interpolate standard curve; etc. |
 
 Implementation order should follow table format rollout and EARS priorities.
+
+---
+
+## Extended analyses (Prism Pro/Standard parity)
+
+The following correspond to [GraphPad FAQ 2259](https://www.graphpad.com/support/faqid/2259/) restricted features; the clone offers them without licensing tiers. Phasing in EARS and implementation plans.
+
+| Feature | Description | Format / context |
+|--------|--------------|------------------|
+| **Multifactor ANOVA from MV** | One-way through N-way ordinary ANOVA from Multiple variables tables; main effects, two-way/three-way interactions, multiple comparisons. No restructuring of MV data required. | multipleVariables |
+| **Classic analyses from MV** | t tests, nonlinear regression, Kaplan–Meier from Multiple variables by designating response, predictor, and grouping variables; multiple response variables in one run. | multipleVariables |
+| **Effect size reporting** | ANOVA: eta squared, partial eta squared, Cohen's f. Contingency: Phi, Cramér's V. t tests: Cohen's d, Hedges' g, Glass's Δ. Extend existing result types with optional effect-size fields. | column, grouped, contingency, xy (as applicable) |
+| **K-means clustering** | User-specified or automatic cluster number. | multipleVariables (or column/xy with matrix view) |
+| **Automatic cluster number (K-means)** | Multiple metrics (e.g. elbow, silhouette, gap); consensus “optimal” k; report and use in K-means. | As above |
+| **Hierarchical clustering** | Linkage and distance options; output used for dendrograms and/or heat map ordering. | multipleVariables |
+| **Kaplan–Meier: number at risk table** | Table aligned with survival graph: at-risk (and optionally cumulative censored) at each time point; auto-update when axis range/interval changes. | survival |
+| **Kaplan–Meier: pairwise comparisons** | User selects which pairs of curves to compare; results in separate tabs or section. | survival |
+
+Result shapes: add optional fields to existing types (e.g. `effectSize`, `effectSizeLabel`) and new result variants for clustering (e.g. `kmeans`, `hierarchical_clustering`) and survival comparisons. Registry: when Multiple variables is implemented, add the corresponding analysis type IDs and allowed formats.
 
 ---
 

@@ -1,8 +1,16 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store';
 import { NewTableDialog } from './NewTableDialog';
-import { sampleColumnData, sampleColumnName } from '../data/sampleColumn';
-import { sampleXYData, sampleXYName } from '../data/sampleXY';
+import { getSampleEntries } from '../data/sampleDataIndex';
+
+const FORMAT_LABELS: Record<string, string> = {
+  column: 'Column',
+  xy: 'XY',
+  grouped: 'Grouped',
+  contingency: 'Contingency',
+  survival: 'Survival',
+  partsOfWhole: 'Parts of whole',
+};
 
 export function Sidebar() {
   const project = useStore((s) => s.project);
@@ -16,11 +24,24 @@ export function Sidebar() {
   const removeLayout = useStore((s) => s.removeLayout);
   const selection = project.selection;
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
+  const sampleMenuRef = useRef<HTMLDivElement>(null);
   const [collapsedTables, setCollapsedTables] = useState<Set<string>>(new Set());
   const [editingTableId, setEditingTableId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
 
   const { tables, analyses, graphs, layouts } = project;
+
+  useEffect(() => {
+    if (!sampleMenuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (sampleMenuRef.current && !sampleMenuRef.current.contains(event.target as Node)) {
+        setSampleMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [sampleMenuOpen]);
 
   function toggleTable(tableId: string) {
     setCollapsedTables((prev) => {
@@ -31,20 +52,13 @@ export function Sidebar() {
     });
   }
 
-  function handleNewFromSampleColumn() {
-    addTable({
-      name: sampleColumnName,
-      format: 'column',
-      data: sampleColumnData,
-    });
-  }
-
-  function handleNewFromSampleXY() {
-    addTable({
-      name: sampleXYName,
-      format: 'xy',
-      data: sampleXYData,
-    });
+  function handleAddTableFromSample(
+    name: string,
+    format: Parameters<typeof addTable>[0]['format'],
+    data: Parameters<typeof addTable>[0]['data']
+  ) {
+    addTable({ name, format, data });
+    setSampleMenuOpen(false);
   }
 
   return (
@@ -58,12 +72,66 @@ export function Sidebar() {
           <button type="button" className="btn-primary" onClick={() => setDialogOpen(true)} aria-label="Add table">
             + Table
           </button>
-          <button type="button" onClick={handleNewFromSampleColumn} aria-label="New from sample column data">
-            Sample Col
-          </button>
-          <button type="button" onClick={handleNewFromSampleXY} aria-label="New from sample XY data">
-            Sample XY
-          </button>
+          <div ref={sampleMenuRef} style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => setSampleMenuOpen((o) => !o)}
+              aria-label="Add table from sample data"
+              aria-expanded={sampleMenuOpen}
+              aria-haspopup="true"
+            >
+              Sample
+            </button>
+            {sampleMenuOpen && (
+              <div
+                className="sidebar-sample-menu"
+                role="menu"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: 4,
+                  minWidth: 160,
+                  background: 'var(--bg-surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 4,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  zIndex: 100,
+                  padding: 4,
+                }}
+              >
+                {getSampleEntries().map((entry) => (
+                  <button
+                    key={entry.format}
+                    type="button"
+                    role="menuitem"
+                    onClick={() =>
+                      handleAddTableFromSample(entry.name, entry.format, entry.data)
+                    }
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '6px 10px',
+                      textAlign: 'left',
+                      border: 'none',
+                      borderRadius: 2,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    {FORMAT_LABELS[entry.format] ?? entry.format}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

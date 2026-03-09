@@ -65,7 +65,7 @@ export type AnalysisResult =
       p: number;
       dfBetween: number;
       dfWithin: number;
-      groupMeans: { label: string; mean: number }[];
+      groupMeans: { label: string; mean: number; /** 95% credible interval for group mean (Bayesian). */ meanCrI?: CrI95 }[];
     }
   | {
       /** @spec PRISM-ANA-007 */
@@ -98,10 +98,12 @@ export type AnalysisResult =
       oddsRatio?: number;
     }
   | {
-      /** @spec PRISM-ANA-010 */
+      /** @spec PRISM-ANA-010, PRISM-ANA-019 */
       type: 'kaplan_meier';
       curves: { group: string; time: number[]; survival: number[] }[];
       medianSurvival?: { group: string; median: number }[];
+      /** 95% credible interval for median survival (Bayesian, single group or "All"). */
+      medianSurvivalCrI?: CrI95;
     }
   | {
       /** @spec PRISM-ANA-011 */

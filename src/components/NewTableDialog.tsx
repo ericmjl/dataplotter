@@ -10,6 +10,7 @@ import type {
   NestedTableData,
 } from '../types';
 import { useStore } from '../store';
+import { getSampleForFormat } from '../data/sampleDataIndex';
 
 type DialogFormat =
   | 'xy'
@@ -422,8 +423,19 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
 
   if (!open) return null;
 
+  const hasSampleForFormat = getSampleForFormat(format) !== null;
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (dataSource === 'tutorial') {
+      const sample = getSampleForFormat(format);
+      if (sample) {
+        addTable({ name: sample.name, format, data: sample.data });
+        setName('');
+        onClose();
+      }
+      return;
+    }
     if (format === 'column') {
       const columnLabels = columnLabelsStr.split(',').map((s) => s.trim()).filter(Boolean);
       if (columnLabels.length === 0) return;
@@ -588,13 +600,25 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
                   name="dataSource"
                   checked={dataSource === 'tutorial'}
                   onChange={() => setDataSource('tutorial')}
-                  disabled
-                  aria-label="Start with sample data to follow a tutorial (to be implemented)"
+                  disabled={!hasSampleForFormat}
+                  aria-label={
+                    hasSampleForFormat
+                      ? 'Start with sample data to follow a tutorial'
+                      : 'Start with sample data (not available for this format)'
+                  }
                 />
-                Start with sample data to follow a tutorial (to be implemented)
+                {hasSampleForFormat
+                  ? 'Start with sample data to follow a tutorial'
+                  : 'Start with sample data (not available for this format)'}
               </label>
             </div>
           </fieldset>
+
+          {dataSource === 'tutorial' && hasSampleForFormat && (
+            <p className="new-table-content-desc" style={{ marginTop: '0.5rem' }}>
+              A table will be created with sample data for {FORMAT_LABELS[format]}. You can run analyses and create graphs immediately.
+            </p>
+          )}
 
           {dataSource === 'enter' && (
             <div className="new-table-creation-fields">
@@ -842,7 +866,7 @@ export function NewTableDialog({ open, onClose }: NewTableDialogProps) {
               type="submit"
               className="dialog-submit"
               aria-label="Create table"
-              disabled={dataSource === 'tutorial'}
+              disabled={dataSource === 'tutorial' && !hasSampleForFormat}
             >
               Create
             </button>

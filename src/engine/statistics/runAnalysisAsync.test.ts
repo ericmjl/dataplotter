@@ -1,16 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { runAnalysisAsync } from './index';
 
-vi.mock('../pyodide/loader', () => ({
-  getPyodide: () => Promise.resolve(null),
-}));
-
 describe('runAnalysisAsync', () => {
-  beforeEach(() => {
-    vi.resetModules();
-  });
-
-  it('returns descriptive result with meanCrI and meanSD when Pyodide is unavailable (TS fallback)', async () => {
+  it('returns descriptive result with meanCrI and meanSD (TS conjugate fallback)', async () => {
     const format = 'column';
     const tableData = {
       columnLabels: ['A', 'B'],
@@ -36,7 +28,7 @@ describe('runAnalysisAsync', () => {
     expect(result.value.byColumn[0].meanCrI).toHaveLength(2);
   });
 
-  it('returns sync result for unpaired_ttest (no PyMC path yet)', async () => {
+  it('returns sync result for unpaired_ttest', async () => {
     const format = 'column';
     const tableData = {
       columnLabels: ['X', 'Y'],
@@ -57,7 +49,7 @@ describe('runAnalysisAsync', () => {
     expect(result.value.type).toBe('unpaired_ttest');
   });
 
-  it('returns unpaired_ttest with Bayesian fields when PyMC is available', async () => {
+  it('returns unpaired_ttest with frequentist fields (optional Bayesian fields from TS)', async () => {
     const format = 'column';
     const tableData = {
       columnLabels: ['Group1', 'Group2'],
@@ -87,7 +79,7 @@ describe('runAnalysisAsync', () => {
     expect(result.value.p).toBeDefined();
     expect(result.value.df).toBeDefined();
     
-    // Bayesian fields (optional) are present when PyMC runs; with mock getPyodide→null they may be absent
+    // Optional Bayesian-style fields (e.g. meanDiffCrI, pDiffPositive) may be present from TS
     if (result.value.meanDiffCrI) {
       expect(result.value.meanDiffCrI).toHaveLength(2);
     }

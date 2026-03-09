@@ -16,10 +16,21 @@ export function runOneWayAnova(
   const n = groups.reduce((s, g) => s + g.length, 0);
   const df2 = n - groups.length;
   const p = jStat.anovaftest(f, df1, df2);
-  const groupMeans = groups.map((g, i) => ({
-    label: columnLabels[i] ?? '',
-    mean: jStat.mean(g),
-  }));
+  const groupMeans = groups.map((g, i) => {
+    const mean = jStat.mean(g);
+    const n = g.length;
+    const sd = n > 1 ? jStat.stdev(g, true) : 0;
+    const sem = n > 1 ? sd / Math.sqrt(n) : 0;
+    const meanCrI: [number, number] | undefined =
+      n > 0 && Number.isFinite(mean) && sem > 0
+        ? [mean - 1.96 * sem, mean + 1.96 * sem]
+        : undefined;
+    return {
+      label: columnLabels[i] ?? '',
+      mean,
+      ...(meanCrI && { meanCrI }),
+    };
+  });
   return {
     type: 'one_way_anova',
     f,
