@@ -1,0 +1,63 @@
+<div class="sidebar-header">
+    <div class="sidebar-brand">
+        <span class="sidebar-brand-icon">D</span>
+        dataplotter
+    </div>
+    <div class="sidebar-actions">
+        <button class="btn-primary" hx-get="/tables/new" hx-target="body" hx-swap="beforeend">
+            + Table
+        </button>
+    </div>
+</div>
+
+<div class="sidebar-content">
+    <span class="sidebar-section">Tables</span>
+    {% if project.tables|length == 0 %}
+    <p class="sidebar-empty">No tables yet</p>
+    {% else %}
+        {% for table in project.tables %}
+        <div class="sidebar-item {{ 'selected' if project.selection and project.selection.type == 'table' and project.selection.table_id == table.id }}" 
+            hx-post="/selection" 
+            hx-vals='{"selection_type":"table","item_id":"{{ table.id }}"}' 
+            hx-target="#main-content"
+            hx-swap="innerHTML">
+            <span class="sidebar-item-icon table">T</span>
+            <span class="item-name">{{ table.name }}</span>
+            <span class="sidebar-item-sublabel">{{ table.format.value if table.format else 'column' }}</span>
+        </div>
+        {% endfor %}
+    {% endif %}
+    
+    <span class="sidebar-section">Analyses</span>
+    {% if project.analyses|length == 0 %}
+    <p class="sidebar-empty">No analyses yet</p>
+    {% else %}
+        {% for analysis in project.analyses %}
+        <div class="sidebar-item {{ 'selected' if project.selection and project.selection.type == 'analysis' and project.selection.analysis_id == analysis.id }}"
+            hx-post="/selection" 
+            hx-vals='{"selection_type":"analysis","item_id":"{{ analysis.id }}"}' 
+            hx-target="#main-content"
+            hx-swap="innerHTML">
+            <span class="sidebar-item-icon analysis">A</span>
+            <span class="item-name">{{ analysis.type }}</span>
+        </div>
+        {% endfor %}
+    {% endif %}
+    
+    <span class="sidebar-section">Graphs</span>
+    {% if project.graphs|length == 0 %}
+    <p class="sidebar-empty">No graphs yet</p>
+    {% else %}
+        {% for graph in project.graphs %}
+        <div class="sidebar-item {{ 'selected' if project.selection and project.selection.type == 'graph' and project.selection.graph_id == graph.id }}"
+            hx-post="/selection" 
+            hx-vals='{"selection_type":"graph","item_id":"{{ graph.id }}"}' 
+            hx-target="#main-content"
+            hx-swap="innerHTML">
+            <span class="sidebar-item-icon graph">G</span>
+            <span class="item-name">{{ graph.name }}</span>
+            <span class="sidebar-item-sublabel">{{ graph.graph_type }}</span>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>

@@ -1,0 +1,14 @@
+<div class="chat-panel-header">Chat</div>
+
+<div class="chat-panel-messages" id="chat-messages">
+    {% for msg in messages %}
+    <div class="chat-message {{ msg.role }}">
+        <div class="message-content">{{ msg.content }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+<form class="chat-panel-form" hx-post="/chat" hx-target="#chat-messages" hx-swap="innerHTML">
+    <input type="text" name="message" placeholder="Ask about your data..." autocomplete="off">
+    <button type="submit" class="btn btn-primary">Send</button>
+</form>

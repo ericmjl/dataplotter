@@ -1,0 +1,278 @@
+<div class="new-table-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="new-table-dialog-title">
+    <div class="new-table-modal-panel">
+        <nav class="new-table-sidebar" aria-label="Table format">
+            <div class="new-table-sidebar-section">NEW TABLE & GRAPH</div>
+            
+            <button type="button" 
+                    class="new-table-sidebar-item selected" 
+                    data-format="column"
+                    onclick="selectFormat('column')">
+                Column
+            </button>
+            
+            <button type="button" 
+                    class="new-table-sidebar-item" 
+                    data-format="xy"
+                    onclick="selectFormat('xy')">
+                XY
+            </button>
+            
+            <button type="button" 
+                    class="new-table-sidebar-item" 
+                    data-format="grouped"
+                    onclick="selectFormat('grouped')">
+                Grouped
+            </button>
+            
+            <button type="button" 
+                    class="new-table-sidebar-item" 
+                    data-format="contingency"
+                    onclick="selectFormat('contingency')">
+                Contingency
+            </button>
+            
+            <button type="button" 
+                    class="new-table-sidebar-item" 
+                    data-format="survival"
+                    onclick="selectFormat('survival')">
+                Survival
+            </button>
+            
+            <button type="button" 
+                    class="new-table-sidebar-item" 
+                    data-format="partsOfWhole"
+                    onclick="selectFormat('partsOfWhole')">
+                Parts of whole
+            </button>
+            
+            <div class="new-table-sidebar-section" style="margin-top: 0.5rem;">
+                EXISTING FILE
+            </div>
+            <button type="button" class="new-table-sidebar-item" disabled aria-disabled="true">
+                Clone a Graph
+            </button>
+        </nav>
+
+        <form class="new-table-content" id="new-table-form"
+              hx-post="/tables"
+              hx-target="#main-content"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.querySelector('.new-table-modal-overlay')?.remove()">
+            <input type="hidden" name="format" id="new-table-format" value="column">
+            <h2 id="new-table-dialog-title">New Data Table and Graph</h2>
+            
+            <p class="new-table-content-desc" id="format-description">
+                Column tables have one grouping variable, with each group defined by a column.
+            </p>
+
+            <div class="new-table-visual-row">
+                <div class="new-table-format-preview" id="table-preview">
+                    <table class="data-grid" style="font-size: 0.75rem;">
+                        <thead>
+                            <tr>
+                                <th style="padding: 0.3rem 0.5rem;">A</th>
+                                <th style="padding: 0.3rem 0.5rem;">B</th>
+                                <th style="padding: 0.3rem 0.5rem;">C</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td>
+                                <td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td>
+                                <td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="new-table-visual-placeholder new-table-example-graph" id="example-graph" role="img" aria-label="Example: bar chart">
+                    <svg viewBox="0 0 120 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="min-height: 5rem;">
+                        <rect x="14" y="32" width="10" height="18" fill="var(--accent)" rx="1" />
+                        <rect x="39" y="22" width="10" height="28" fill="var(--accent)" rx="1" />
+                        <rect x="64" y="36" width="10" height="14" fill="var(--accent)" rx="1" />
+                        <rect x="89" y="18" width="10" height="32" fill="var(--accent)" rx="1" />
+                    </svg>
+                </div>
+                
+                <a href="#" class="new-table-learn-more" onclick="event.preventDefault()">
+                    ? Learn more
+                </a>
+            </div>
+
+            <fieldset class="new-table-data-options">
+                <legend>Data table:</legend>
+                <div class="new-table-radio-group">
+                    <label>
+                        <input type="radio" 
+                               name="dataSource" 
+                               value="enter" 
+                               checked
+                               onchange="toggleDataSource('enter')"
+                               aria-label="Enter or import data into a new table">
+                        Enter or import data into a new table
+                    </label>
+                    <label>
+                        <input type="radio" 
+                               name="dataSource" 
+                               value="tutorial"
+                               onchange="toggleDataSource('tutorial')"
+                               aria-label="Start with sample data to follow a tutorial">
+                        Start with sample data to follow a tutorial
+                    </label>
+                </div>
+            </fieldset>
+
+            <div id="creation-fields" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+                <div class="dialog-field">
+                    <label for="new-table-name" class="dialog-label">
+                        Table name
+                    </label>
+                    <input type="text" 
+                           id="new-table-name" 
+                           name="name"
+                           class="dialog-input" 
+                           value="Untitled"
+                           aria-label="Table name">
+                </div>
+
+                <div id="format-specific-fields">
+                    <div class="dialog-field" id="column-labels-field">
+                        <label for="columnLabels" class="dialog-label">
+                            Column labels (comma-separated)
+                        </label>
+                        <input type="text" 
+                               id="columnLabels" 
+                               name="columnLabels"
+                               class="dialog-input"
+                               placeholder="A, B, C"
+                               value="A, B"
+                               aria-label="Column labels">
+                    </div>
+                </div>
+            </div>
+
+            <div class="new-table-modal-footer">
+                <button type="button" 
+                        onclick="document.querySelector('.new-table-modal-overlay').remove()">
+                    Cancel
+                </button>
+                <button type="submit" 
+                        class="dialog-submit"
+                        aria-label="Create table">
+                    Create
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let selectedFormat = 'column';
+
+const formatDescriptions = {
+    column: 'Column tables have one grouping variable, with each group defined by a column.',
+    xy: 'XY tables: Each point is defined by an X and Y coordinate.',
+    grouped: 'Grouped tables have two grouping variables (rows × columns), with replicates per cell.',
+    contingency: 'Contingency tables contain counts of subjects in categories (rows × columns).',
+    survival: 'Survival tables: Each row tabulates the survival or censored time of a subject.',
+    partsOfWhole: 'Parts of whole tables: Values that are fractions of a whole (e.g. pie chart).',
+};
+
+const tablePreviews = {
+    column: '<table class="data-grid" style="font-size: 0.75rem;"><thead><tr><th style="padding: 0.3rem 0.5rem;">A</th><th style="padding: 0.3rem 0.5rem;">B</th><th style="padding: 0.3rem 0.5rem;">C</th></tr></thead><tbody><tr><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td></tr></tbody></table>',
+    xy: '<table class="data-grid" style="font-size: 0.75rem;"><thead><tr><th style="padding: 0.3rem 0.5rem;">X</th><th style="padding: 0.3rem 0.5rem;">Y1</th><th style="padding: 0.3rem 0.5rem;">Y2</th></tr></thead><tbody><tr><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td></tr></tbody></table>',
+    grouped: '<table class="data-grid" style="font-size: 0.75rem;"><thead><tr><th style="padding: 0.3rem 0.5rem;">—</th><th style="padding: 0.3rem 0.5rem;" colspan="2">Col1</th><th style="padding: 0.3rem 0.5rem;" colspan="2">Col2</th></tr><tr><th></th><th style="padding: 0.3rem 0.5rem;">1</th><th style="padding: 0.3rem 0.5rem;">2</th><th style="padding: 0.3rem 0.5rem;">1</th><th style="padding: 0.3rem 0.5rem;">2</th></tr></thead><tbody><tr><td style="padding: 0.3rem 0.5rem;">Ctrl</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td></tr></tbody></table>',
+    contingency: '<table class="data-grid" style="font-size: 0.75rem;"><thead><tr><th style="padding: 0.3rem 0.5rem;">—</th><th style="padding: 0.3rem 0.5rem;">A</th><th style="padding: 0.3rem 0.5rem;">B</th></tr></thead><tbody><tr><td style="padding: 0.3rem 0.5rem;">Yes</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">0</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">0</td></tr><tr><td style="padding: 0.3rem 0.5rem;">No</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">0</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">0</td></tr></tbody></table>',
+    survival: '<table class="data-grid" style="font-size: 0.75rem;"><thead><tr><th style="padding: 0.3rem 0.5rem;">Time</th><th style="padding: 0.3rem 0.5rem;">Event</th><th style="padding: 0.3rem 0.5rem;">Group</th></tr></thead><tbody><tr><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">0/1</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td></tr></tbody></table>',
+    partsOfWhole: '<table class="data-grid" style="font-size: 0.75rem;"><thead><tr><th style="padding: 0.3rem 0.5rem;">Label</th><th style="padding: 0.3rem 0.5rem;">Value</th></tr></thead><tbody><tr><td style="padding: 0.3rem 0.5rem;">A</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td></tr><tr><td style="padding: 0.3rem 0.5rem;">B</td><td style="padding: 0.3rem 0.5rem; color: var(--text-muted);">—</td></tr></tbody></table>',
+};
+
+const exampleGraphs = {
+    column: '<svg viewBox="0 0 120 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="min-height: 5rem;"><rect x="14" y="32" width="10" height="18" fill="var(--accent)" rx="1" /><rect x="39" y="22" width="10" height="28" fill="var(--accent)" rx="1" /><rect x="64" y="36" width="10" height="14" fill="var(--accent)" rx="1" /><rect x="89" y="18" width="10" height="32" fill="var(--accent)" rx="1" /></svg>',
+    xy: '<svg viewBox="0 0 120 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="min-height: 5rem;"><path d="M 10 38 L 35 28 L 55 22 L 80 15 L 105 8" fill="none" stroke="var(--accent)" stroke-width="1.5" /><circle cx="10" cy="38" r="3" fill="var(--accent)" /><circle cx="35" cy="28" r="3" fill="var(--accent)" /><circle cx="55" cy="22" r="3" fill="var(--accent)" /><circle cx="80" cy="15" r="3" fill="var(--accent)" /><circle cx="105" cy="8" r="3" fill="var(--accent)" /></svg>',
+    grouped: '<svg viewBox="0 0 120 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="min-height: 5rem;"><rect x="10" y="30" width="6" height="20" fill="var(--accent)" rx="1" /><rect x="16" y="22" width="6" height="28" fill="var(--text-muted)" rx="1" /><rect x="34" y="30" width="6" height="20" fill="var(--accent)" rx="1" /><rect x="40" y="22" width="6" height="28" fill="var(--text-muted)" rx="1" /><rect x="58" y="30" width="6" height="20" fill="var(--accent)" rx="1" /><rect x="64" y="22" width="6" height="28" fill="var(--text-muted)" rx="1" /></svg>',
+    contingency: '<svg viewBox="0 0 120 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="min-height: 5rem;"><rect x="17" y="38" width="14" height="12" fill="var(--accent)" rx="1" /><rect x="47" y="28" width="14" height="22" fill="var(--accent)" rx="1" /><rect x="77" y="34" width="14" height="16" fill="var(--accent)" rx="1" /></svg>',
+    survival: '<svg viewBox="0 0 120 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="min-height: 5rem;"><path d="M 10 10 L 35 10 L 35 22 L 60 22 L 60 35 L 95 35 L 95 48 L 110 48" fill="none" stroke="var(--accent)" stroke-width="1.5" /></svg>',
+    partsOfWhole: '<svg viewBox="0 0 120 50" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="min-height: 5rem;"><circle cx="60" cy="25" r="22" fill="none" stroke="var(--border-default)" stroke-width="1" /><path d="M 60 25 L 60 3 A 22 22 0 0 1 78 20 Z" fill="var(--accent)" /><path d="M 60 25 L 78 20 A 22 22 0 0 1 60 47 Z" fill="var(--text-muted)" /><path d="M 60 25 L 60 47 A 22 22 0 0 1 42 20 Z" fill="var(--accent-subtle)" /><path d="M 60 25 L 42 20 A 22 22 0 0 1 60 3 Z" fill="var(--border-default)" /></svg>',
+};
+
+function selectFormat(format) {
+    selectedFormat = format;
+    var formatInput = document.getElementById('new-table-format');
+    if (formatInput) formatInput.value = format;
+
+    // Update sidebar buttons
+    document.querySelectorAll('.new-table-sidebar-item[data-format]').forEach(btn => {
+        btn.classList.remove('selected');
+        if (btn.dataset.format === format) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    // Update description
+    document.getElementById('format-description').textContent = formatDescriptions[format];
+    
+    // Update table preview
+    document.getElementById('table-preview').innerHTML = tablePreviews[format];
+    
+    // Update example graph
+    document.getElementById('example-graph').innerHTML = exampleGraphs[format];
+    
+    // Update form fields based on format
+    updateFormFields(format);
+}
+
+function updateFormFields(format) {
+    const fieldsContainer = document.getElementById('format-specific-fields');
+    
+    if (format === 'column') {
+        fieldsContainer.innerHTML = `
+            <div class="dialog-field">
+                <label for="columnLabels" class="dialog-label">Column labels (comma-separated)</label>
+                <input type="text" id="columnLabels" name="columnLabels" class="dialog-input" placeholder="A, B, C" value="A, B">
+            </div>
+        `;
+    } else if (format === 'xy') {
+        fieldsContainer.innerHTML = `
+            <div class="dialog-field">
+                <label for="xLabel" class="dialog-label">X axis label</label>
+                <input type="text" id="xLabel" name="xLabel" class="dialog-input" value="X">
+            </div>
+            <div class="dialog-field">
+                <label for="yLabels" class="dialog-label">Y series labels (comma-separated)</label>
+                <input type="text" id="yLabels" name="yLabels" class="dialog-input" placeholder="Y" value="Y">
+            </div>
+        `;
+    } else if (format === 'survival') {
+        fieldsContainer.innerHTML = `
+            <div class="dialog-field">
+                <label for="timeLabel" class="dialog-label">Time column label</label>
+                <input type="text" id="timeLabel" name="timeLabel" class="dialog-input" value="Time">
+            </div>
+            <div class="dialog-field">
+                <label for="eventLabel" class="dialog-label">Event column label</label>
+                <input type="text" id="eventLabel" name="eventLabel" class="dialog-input" value="Event">
+            </div>
+        `;
+    } else if (format === 'partsOfWhole') {
+        fieldsContainer.innerHTML = `
+            <div class="dialog-field">
+                <label for="partsLabels" class="dialog-label">Labels (comma-separated)</label>
+                <input type="text" id="partsLabels" name="partsLabels" class="dialog-input" placeholder="A, B, C" value="A, B, C">
+            </div>
+        `;
+    } else {
+        fieldsContainer.innerHTML = '';
+    }
+}
+
+function toggleDataSource(source) {
+    const fields = document.getElementById('creation-fields');
+    if (source === 'tutorial') {
+        fields.style.display = 'none';
+    } else {
+        fields.style.display = 'block';
+    }
+}
+
+</script>
